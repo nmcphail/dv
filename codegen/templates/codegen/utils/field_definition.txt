@@ -1,0 +1,10 @@
+
+{% for f in field_list %}
+    {% if f.field_type == "string"  %}
+        {{f.column_name}} varchar( {{f.field_length}}) {% if not forloop.last %},{% endif  %}
+    {% elif f.field_type == "int" %}
+        {{f.column_name}} int {% if not forloop.last %},{% endif  %}
+    {% else %}
+        {{f.column_name}} {{f.field_type}} {% if not forloop.last %},{% endif  %}
+    {% endif %}
+{% endfor %}

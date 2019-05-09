@@ -1,0 +1,11 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubTable.txt
+
+*/
+
+create table {{hub_table_generator.hub.schema}}.{{ hub_table_generator.hub.table_name }} (
+
+

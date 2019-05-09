@@ -4,7 +4,7 @@ from django import forms
 # Register your models here.
 
 
-from .models import Hub, HubKeyField, HubHashField, HubSatelite
+from .models import Hub, HubKeyField, HubSatelite, HubSateliteField
 from .models import Link, LinkHubReference, LinkSatelite
 from .models import StageTable, StageTableField, HubLoader, HubLoaderField
 
@@ -14,10 +14,6 @@ class HubKeyFieldInline(admin.TabularInline):
     extra = 0
 
     
-class HubHashFieldInline(admin.TabularInline):
-    model = HubHashField
-    extra = 0    
-
 class HubSateliteInline(admin.TabularInline):
     model = HubSatelite
     show_change_link = True
@@ -25,13 +21,23 @@ class HubSateliteInline(admin.TabularInline):
     
 class HubAdmin(admin.ModelAdmin):
     readonly_fields = ['schema']
-    inlines = [HubKeyFieldInline, HubSateliteInline, HubHashFieldInline]
+    inlines = [HubKeyFieldInline, HubSateliteInline]
 
     
 admin.site.register(Hub, HubAdmin)
-admin.site.register(HubSatelite)
-
 admin.site.register(HubKeyField)
+
+
+class HubSateliteFieldInline(admin.TabularInline):
+    model = HubSateliteField
+    extra = 0
+
+class HubSateliteAdmin(admin.ModelAdmin):
+    inlines = [HubSateliteFieldInline]
+
+admin.site.register(HubSatelite, HubSateliteAdmin)
+admin.site.register(HubSateliteField)
+
 
 class LinkHubReferenceInline(admin.TabularInline):
     model = LinkHubReference

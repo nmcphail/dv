@@ -2,6 +2,9 @@ from django.db import models
 
 # Create your models here.
 
+def convert_person_readable_fieldname(fieldname):
+    f = fieldname.replace(' ', '_')
+    return f
 
 class DVEntity(models.Model):
     name = models.CharField(max_length=200)
@@ -18,6 +21,24 @@ class DVEntity(models.Model):
     table_name = models.CharField(max_length=200, blank=True)
     table_alias = models.CharField(max_length=200, blank=True)
 
+    def get_load_time_field(self):
+        return FieldNonPersistent.create_load_time_field()
+
+    def get_record_source_field(self):
+        return FieldNonPersistent.create_record_source_field()
+
+    def get_diff_key_field(self):
+        f = FieldNonPersistent(
+            field_name = self.name + 'Diff Key',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_dk'
+        )
+        return f
+    
     def __str__(self):
         return self.name
 
@@ -42,55 +63,154 @@ class RootEntity(DVEntity):
 
 class Field(models.Model):
     field_name = models.CharField(max_length=200)
-    field_type = models.CharField(max_length=200, blank=True)
+    field_type = models.CharField(max_length=200,
+                                  choices = (('string', 'string'),
+                                             ('int', 'int'),
+                                             ('float', 'float'),
+                                             ('date', 'date'),
+                                             ('datetime', 'datetime'), )  )
+    
     field_precision = models.IntegerField(blank=True)
     field_scale = models.IntegerField(blank=True)
     field_desciption = models.CharField(max_length=200, blank=True)
+    field_length = models.IntegerField(blank=True)
     column_name = models.CharField(max_length=200, blank=True)
 
     class Meta():
         abstract = True
 
 
+    def clean(self):
+        super().clean()
+        if self.column_name is None or self.column_name == '':
+            self.column_name = convert_person_readable_fieldname(self.field_name)
+
+        if self.field_precision is None:
+            self.field_precision = 0
+            
+        if self.field_scale is None:
+            self.field_scale = 0
+
+            
+class FieldNonPersistent():
+
+    def __init__(self,
+                 field_name=None,
+                 field_type = None,
+                 field_precision=None,
+                 field_scale = None,
+                 field_description=None,
+                 field_length=None,
+                 column_name=None,
+                 dventity = None):
+    
+        self.field_name = field_name     
+        self.field_type = field_type      
+        self.field_precision = field_precision 
+        self.field_scale =    field_scale  
+        self.field_desciption = field_description
+        self.field_length = field_length
+        self.column_name = column_name
+        self.dventity = dventity
+
+        if self.column_name is None or self.column_name == '':
+            self.column_name = convert_person_readable_fieldname(self.field_name)
+
+        if self.field_precision is None:
+            self.field_precision = 0
+            
+        if self.field_scale is None:
+            self.field_scale = 0
+
+        
+
+    def create_from_model_field(model_field):
+        f = FieldNonPersistent(
+            field_name = model_field.field_name,     
+            field_type = model_field.field_type,      
+            field_precision = model_field.field_precision, 
+            field_scale = model_field.field_scale,  
+            field_description = model_field.field_description,
+            field_length = model_field.field_length,
+            column_name = model_field.column_name
+        )
+        return f
+
+    def create_load_time_field():
+        f = FieldNonPersistent(
+            field_name = 'Load Time',     
+            field_type = 'datetime',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = None,
+            column_name = 'rldt'
+        )
+        return f
+
+    def create_record_source_field():
+        f = FieldNonPersistent(
+            field_name = 'Load Time',     
+            field_type = 'datetime',       
+            field_precision = 0, 
+            field_scale = 0 , 
+            field_description = 0,
+            field_length = 4,
+            column_name = 'rsrc'
+        )
+        return f
+
+    
+    
 class Satelite(DVEntity):
     source = models.CharField(max_length=200, blank=True)
     rate_of_change = models.CharField(max_length=200, blank=True)
+    create_diff_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=True,
+        help_text = '''If Yes, this satelite will contain a difference field to look for situations where
+                       this satelite should be replaced with a more recent record ''' )
 
     class Meta():
         abstract = True
 
 
 class Hub(RootEntity):
+    pass
+
     def clean(self):
+        super().clean()
         self.schema = self.vault
         if self.root_name is None or self.root_name == '':
-            self.root_name = (
-                'hub' + \
-                '_' + \
-                self.name
-            ).replace(' ', '_').lower()
+            self.root_name = ('hub' + \
+                               '_' + \
+                               self.name).replace(' ', '_').lower()
 
-        if not hasattr(self, 'hubhashfield'):
-            f = HubHashField(
-                field_name='Hub Hash Field',
-                field_type='char',
-                field_precision=1,
-            )
+        if self.table_name is None or self.table_name == '':
+            self.table_name = self.name.replace(' ', '_').lower()
+    
+    #@property        
+    def get_hash_key_field(self):
+        f = FieldNonPersistent(
+            field_name = 'Hash Key',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_hk'
+        )
+        return f
 
-            self.hubhashfield = f
-
-
-class HubHashField(Field):
-    hub = models.OneToOneField(
-        Hub,
-        on_delete=models.CASCADE,
-        primary_key=True,
-    )
-
-
+            
 class HubKeyField(Field):
-    hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
-
+    hub = models.ForeignKey(Hub,
+                            on_delete=models.CASCADE,
+                            related_name='key_fields' )
+    
+    def __str__(self):
+        return self.field_name
 
 class HubSatelite(Satelite):
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
@@ -106,37 +226,75 @@ class HubSatelite(Satelite):
         if self.table_alias is None or self.table_alias == '':
             self.table_alias = self.name.replace(' ', '_').lower()
 
+class HubSateliteField(Field):
+    sat = models.ForeignKey(HubSatelite,
+                            on_delete=models.CASCADE,
+                            related_name='fields' )
+    
+    def __str__(self):
+        return self.field_name
 
 class Link(RootEntity):
+    create_diff_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''If True, this link will contain a difference field to look for situations where
+                       this link should be end dated, or reversed                             
+                                                                 ''' )
+
+    
     def clean(self):
+        super().clean()
         self.schema = self.vault
         if self.root_name is None or self.root_name == '':
             self.root_name = ('link' + \
                                '_' + \
                                self.name).replace(' ', '_').lower()
 
+    def get_hash_key_field(self):
+        f = FieldNonPersistent(
+            field_name = self.name + 'Hash Key',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_hk'
+        )
+        return f
+
+    
 
 class LinkField(Field):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
-
-class LinkDifferenceField(Field):
-    link = models.OneToOneField(
-        Link,
-        on_delete=models.CASCADE,
-        primary_key=True,
-    )
-
-
+    
 class LinkHubReference(models.Model):
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
     hub_alias = models.CharField(max_length=200, blank=True)
 
+    forms_part_of_driving_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''This hub forms part of the driving key, and will trigger
+                       a new link if  a record comes through with the same driving 
+                       key but with a differet dif key.  the existing record will be
+                       either end-dated or reversed                                                           
+                                                                 ''' )
+
 
 class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
+class LinkSateliteField(Field):
+    sat = models.ForeignKey(LinkSatelite,
+                            on_delete=models.CASCADE )
+
+
+    
 
 class StageTable(RootEntity):
     pass
@@ -196,6 +354,7 @@ class HubSateliteLoaderField(models.Model):
                                           on_delete=models.CASCADE)
 
    
+
 class LinkLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
    

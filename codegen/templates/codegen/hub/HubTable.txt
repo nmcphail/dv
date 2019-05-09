@@ -1,0 +1,32 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubTable.txt
+
+*/
+
+create table {{hub_table_generator.hub.schema}}.{{ hub_table_generator.hub.table_name }} (
+
+{% include "../utils/field_definition.txt" with field_list=hub_table_generator.field_list  %}
+
+);
+
+insert into {{hub_table_generator.hub.schema}}.{{ hub_table_generator.hub.table_name }} (
+
+    {{ hub_table_generator.hub.get_hash_key_field.column_name }},
+    {{ hub_table_generator.hub.get_load_time_field.column_name }}
+)
+values (
+
+    '00000000000000000000000000000000',
+    to_date('0001-01-01', 'YYYY-MM-DD')
+);
+commit;
+
+
+ALTER TABLE  {{hub_table_generator.hub.schema}}.{{ hub_table_generator.hub.table_name }}
+   ADD  CONSTRAINT  {{ hub_table_generator.hub.table_name }}
+   PRIMARY KEY ( {{ hub_table_generator.hub.get_hash_key_field.column_name }}  );
+
+

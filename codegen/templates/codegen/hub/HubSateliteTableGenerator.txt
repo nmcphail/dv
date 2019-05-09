@@ -1,0 +1,36 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubSateliteTableGenerator.txt
+
+*/
+
+create table {{sat_table_generator.sat.schema}}.{{ sat_table_generator.sat.table_name }} (
+
+{% include "../utils/field_definition.txt" with field_list=sat_table_generator.field_list  %}
+
+);
+
+
+insert into {{sat_table_generator.sat.schema}}.{{ sat_table_generator.sat.table_name }} (
+
+    {{ sat_table_generator.sat.hub.get_hash_key_field.column_name }},
+    {{ sat_table_generator.sat.get_load_time_field.column_name }}
+)
+values (
+
+    '00000000000000000000000000000000',
+    to_date('0001-01-01', 'YYYY-MM-DD')
+);
+commit;
+
+
+ALTER TABLE  {{sat_table_generator.sat.schema}}.{{ sat_table_generator.sat.table_name }}
+   ADD  CONSTRAINT  {{ sat_table_generator.sat.table_name }}_pk
+   PRIMARY KEY (
+{% include "../utils/field_names.txt" with field_list=sat_table_generator.primary_key_fields %}
+
+   );
+
+

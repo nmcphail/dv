@@ -1,0 +1,4 @@
+
+{% for f in field_list %}
+       {% if not alias is None %}{{alias}}.{% endif %}{{f.column_name}}  {% if not forloop.last %},{% endif  %}
+{% endfor %}
