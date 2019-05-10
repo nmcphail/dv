@@ -71,7 +71,18 @@ class HubLoaderFieldForm(forms.ModelForm):
         super(HubLoaderFieldForm, self).__init__(*args, **kwargs)
         #self.fields['stage_table_field'].queryset = self.instance.hub_loader.stage_table.foo_bar.all()
         #self.initial['comment'] = self.instance.hub_loader.id
-       
+        #self.initial['comment'] = self.instance
+
+        
+        if self.instance.id is not None:
+            hlf = HubLoaderField.objects.get(pk=self.instance.id)
+            self.fields['stage_table_field'].queryset = hlf.hub_loader.stage_table.stagetablefield_set.all()
+        else:
+            self.fields['stage_table_field'].queryset = StageTableField.objects.all()
+
+            
+
+        
        
 class HubLoaderFieldInline(admin.TabularInline):
     model = HubLoaderField

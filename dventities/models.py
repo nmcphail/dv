@@ -7,19 +7,29 @@ def convert_person_readable_fieldname(fieldname):
     return f
 
 class DVEntity(models.Model):
-    name = models.CharField(max_length=200)
+    name = models.CharField(
+        max_length=200,
+        help_text='This will be the name that the Hub, Satelite, Link etc will be known as')
     #last_mod_date = models.DateTimeField('last modified date', blank=True)
     vault = models.CharField(max_length=200,
                              blank=True,
                              choices=(('Raw', 'Raw'), ('Bus', 'Business')),
-                             default='raw')
+                             default='raw',
+                             help_text = 'Determines the vault, and hence schema this entity resides in')
 
     schema = models.CharField(
         max_length=200,
         blank=True,
+        help_text='Can be supplied directly, otherwise, derived from the Vault field'
     )
-    table_name = models.CharField(max_length=200, blank=True)
-    table_alias = models.CharField(max_length=200, blank=True)
+    table_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text='Can be entered explicitly, but if blank will be derived from name, and table_naming rules')
+    table_alias = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="table Alias will be used when this table is used in joins, and select statements")
 
     def get_load_time_field(self):
         return FieldNonPersistent.create_load_time_field()
@@ -70,10 +80,10 @@ class Field(models.Model):
                                              ('date', 'date'),
                                              ('datetime', 'datetime'), )  )
     
-    field_precision = models.IntegerField(blank=True)
-    field_scale = models.IntegerField(blank=True)
-    field_desciption = models.CharField(max_length=200, blank=True)
-    field_length = models.IntegerField(blank=True)
+    field_precision = models.IntegerField(blank=True, null=True)
+    field_scale = models.IntegerField(blank=True, null=True)
+    field_description = models.CharField(max_length=200, blank=True, null=True)
+    field_length = models.IntegerField(blank=True, null=True)
     column_name = models.CharField(max_length=200, blank=True)
 
     class Meta():
@@ -108,7 +118,7 @@ class FieldNonPersistent():
         self.field_type = field_type      
         self.field_precision = field_precision 
         self.field_scale =    field_scale  
-        self.field_desciption = field_description
+        self.field_description = field_description
         self.field_length = field_length
         self.column_name = column_name
         self.dventity = dventity
@@ -188,7 +198,7 @@ class Hub(RootEntity):
                                self.name).replace(' ', '_').lower()
 
         if self.table_name is None or self.table_name == '':
-            self.table_name = self.name.replace(' ', '_').lower()
+            self.table_name = self.name.replace(' ', '_').lower() + '_hub'
     
     #@property        
     def get_hash_key_field(self):
@@ -206,8 +216,7 @@ class Hub(RootEntity):
             
 class HubKeyField(Field):
     hub = models.ForeignKey(Hub,
-                            on_delete=models.CASCADE,
-                            related_name='key_fields' )
+                            on_delete=models.CASCADE )
     
     def __str__(self):
         return self.field_name
@@ -251,6 +260,8 @@ class Link(RootEntity):
             self.root_name = ('link' + \
                                '_' + \
                                self.name).replace(' ', '_').lower()
+        if self.table_name is None or self.table_name == '':
+            self.table_name = self.name.replace(' ', '_').lower() + '_link'
 
     def get_hash_key_field(self):
         f = FieldNonPersistent(
@@ -284,7 +295,20 @@ class LinkHubReference(models.Model):
                        key but with a differet dif key.  the existing record will be
                        either end-dated or reversed                                                           
                                                                  ''' )
+    class Meta():
+        ordering = ['id']
 
+    def get_hash_key_field_for_alias(self):
+        mf = self.hub.get_hash_key_field()
+        f = FieldNonPersistent.create_from_model_field(mf)
+        if self.hub_alias is None or self.hub_alias == '':
+            return f
+            
+        else:
+            f.name = f.field_name + 'Hash Key'
+            f.column_name = f.column_name.replace('_hk', '_{}_hk'.format(self.hub_alias))
+            return f
+        
 
 class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
@@ -293,17 +317,21 @@ class LinkSateliteField(Field):
     sat = models.ForeignKey(LinkSatelite,
                             on_delete=models.CASCADE )
 
-
     
-
 class StageTable(RootEntity):
-    pass
+    def clean(self):
+        super().clean()
+        self.schema = self.vault
+        if self.root_name is None or self.root_name == '':
+            self.root_name = ('stage' + \
+                               '_' + \
+                               self.name).replace(' ', '_').lower()
 
     def __str__(self):
         return "Stage Table : {}  ".format(self.name)
 
 class StageTableField(Field):
-    stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE, related_name='foo_bar')
+    stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
     usage = models.CharField(
         max_length=200,
         blank=True,
@@ -311,6 +339,16 @@ class StageTableField(Field):
         choices = (('physical', 'physical'),
                    ('derived', 'derived'),
                    ('augmented', 'augmented')))
+
+    stage_table_primary_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''This field represents the primary key of the stage table.  A similar primary key will
+                       be created on the augmented table, and then a view will combined fields in the stage table 
+                       with fields in the augmented table''' )
+    
+
     def __str__(self):
         return "Stage Table Field : {}.{}  ".format(self.stage_table.name, self.field_name)
 
@@ -335,17 +373,27 @@ class HubLoaderField(models.Model):
         default = 'hub key field',
         choices = (('hub key field', 'Hub Key Field'), ))
 
-#    def __str__(self):
-#        return "Hub Loader Field  :  {}    ".format(
-#            self.fie,
-#            self.stage_table_field.field_name,
-#            self.hub_loader,
-#            )
+    hub_field_name  = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text = '''If left blank, the loader will
+                       look for a hub field whose name is the same as this field.  
+                       If this field is populated, then the loader will load 
+                       data into the field specified here ''' )
+    
+    def __str__(self):
+        return "Hub Loader Field  :  {} {}    ".format(
+            self.stage_table_field.field_name,
+            self.hub_loader,
+            )
 
    
 class HubSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
-   
+
+    hub_loader = models.ForeignKey(HubLoader,
+                                    on_delete=models.CASCADE)
+    
 class HubSateliteLoaderField(models.Model):
     hub_satelite_loader = models.ForeignKey(HubSateliteLoader,
                                             on_delete=models.CASCADE)
@@ -353,22 +401,39 @@ class HubSateliteLoaderField(models.Model):
     stage_table_field = models.ForeignKey(StageTableField,
                                           on_delete=models.CASCADE)
 
+    comment = models.CharField(max_length=200, blank=True)
+    create_field_like_this_in_satelite = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''If a field with this name does not exist in the satelite, then
+                       a field will be created when this record is saved ''' )
+    
+    satelite_field_name= models.CharField(
+        max_length=200,
+        blank=True,
+        help_text = '''The satelite field that will get populated by load routines ''' )
+
    
 
 class LinkLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
+    hub_loaders = models.ManyToManyField(HubLoader)
    
 class LinkLoaderField(models.Model):
-    hub_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
+    link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
     stage_table_field = models.ForeignKey(StageTableField,
                                           on_delete=models.CASCADE)
    
 class LinkSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable,
                                     on_delete=models.CASCADE)
-   
+
+    link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
+
+    
 class LinkSateliteLoaderField(models.Model):
-    hub_satelite_loader = models.ForeignKey(LinkSateliteLoader,
+    link_satelite_loader = models.ForeignKey(LinkSateliteLoader,
                                             on_delete=models.CASCADE)
     stage_table_field = models.ForeignKey(StageTableField,
                                           on_delete=models.CASCADE)
