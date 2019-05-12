@@ -190,7 +190,6 @@ class Hub(RootEntity):
     pass
 
     def clean(self):
-        super().clean()
         self.schema = self.vault
         if self.root_name is None or self.root_name == '':
             self.root_name = ('hub' + \
@@ -198,7 +197,8 @@ class Hub(RootEntity):
                                self.name).replace(' ', '_').lower()
 
         if self.table_name is None or self.table_name == '':
-            self.table_name = self.name.replace(' ', '_').lower() + '_hub'
+            self.table_name = (self.name.replace(' ', '_').lower()) + '_hub'
+        super().clean()
     
     #@property        
     def get_hash_key_field(self):
@@ -213,13 +213,22 @@ class Hub(RootEntity):
         )
         return f
 
+    def __str__(self):
+        ret = '{}.{}'.format(self.schema, self.table_name)
+        return ret
+
+    
             
 class HubKeyField(Field):
     hub = models.ForeignKey(Hub,
                             on_delete=models.CASCADE )
     
+
     def __str__(self):
-        return self.field_name
+        ret = '{}.{}'.format(
+            self.hub if self.hub_id is not None else '',
+            self.field_name)
+        return ret
 
 class HubSatelite(Satelite):
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
@@ -235,13 +244,21 @@ class HubSatelite(Satelite):
         if self.table_alias is None or self.table_alias == '':
             self.table_alias = self.name.replace(' ', '_').lower()
 
+    def __str__(self):
+        ret = '{} - {}.{}'.format( self.hub if self.hub_id is not None else '',
+                                   self.schema, self.table_name  )
+        return ret
+
 class HubSateliteField(Field):
     sat = models.ForeignKey(HubSatelite,
                             on_delete=models.CASCADE,
                             related_name='fields' )
     
     def __str__(self):
-        return self.field_name
+        ret = '{}.{}'.format( self.sat if self.sat_id is not None else '',
+                              self.column_name
+        )
+        return ret
 
 class Link(RootEntity):
     create_diff_key = models.BooleanField(
@@ -254,7 +271,6 @@ class Link(RootEntity):
 
     
     def clean(self):
-        super().clean()
         self.schema = self.vault
         if self.root_name is None or self.root_name == '':
             self.root_name = ('link' + \
@@ -262,6 +278,7 @@ class Link(RootEntity):
                                self.name).replace(' ', '_').lower()
         if self.table_name is None or self.table_name == '':
             self.table_name = self.name.replace(' ', '_').lower() + '_link'
+        super().clean()
 
     def get_hash_key_field(self):
         f = FieldNonPersistent(
@@ -275,10 +292,18 @@ class Link(RootEntity):
         )
         return f
 
+    def __str__(self):
+        ret = '{}.{}'.format( self.schema, self.table_name)
+        return ret
     
 
 class LinkField(Field):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
+
+    def __str__(self):
+        ret = '{}.{}'.format( link if self.link_id is not None else '',
+                              self.column_name)
+        return ret
 
     
 class LinkHubReference(models.Model):
@@ -298,6 +323,12 @@ class LinkHubReference(models.Model):
     class Meta():
         ordering = ['id']
 
+    def __str__(self):
+        ret = '{} -> {} ( with alias {})'.format( self.link if self.link_id is not None else '',
+                                      self.hub if self.hub_id is not None else '',
+                                      self.hub_alias)
+        return ret
+
     def get_hash_key_field_for_alias(self):
         mf = self.hub.get_hash_key_field()
         f = FieldNonPersistent.create_from_model_field(mf)
@@ -313,9 +344,18 @@ class LinkHubReference(models.Model):
 class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
+    def __str__(self):
+        ret = '{} - {}.{}'.format( self.link if self.link_id is not None else '',
+                                   self.schema, self.table_name  )
+        return ret
+    
 class LinkSateliteField(Field):
     sat = models.ForeignKey(LinkSatelite,
                             on_delete=models.CASCADE )
+    def __str__(self):
+        ret = '{}.{}'.format( self.sat if self.sat_id is not None else '',
+                                   self.column_name  )
+        return ret
 
     
 class StageTable(RootEntity):
@@ -328,7 +368,7 @@ class StageTable(RootEntity):
                                self.name).replace(' ', '_').lower()
 
     def __str__(self):
-        return "Stage Table : {}  ".format(self.name)
+        return "{}.{}".format(self.schema, self.name)
 
 class StageTableField(Field):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
@@ -349,18 +389,25 @@ class StageTableField(Field):
                        with fields in the augmented table''' )
     
 
-    def __str__(self):
-        return "Stage Table Field : {}.{}  ".format(self.stage_table.name, self.field_name)
 
+    def __str__(self):
+        ret = '{}.{}'.format( self.stage_table if self.stage_table_id is not None else '',
+                                   self.column_name  )
+        return ret
    
 class HubLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
 
     def __str__(self):
-        return "Hub Loader  : From Stage Table  {} to {}  ".format(self.stage_table.name, self.hub.name)
+        ret = '{} -> {}'.format(
+            self.stage_table if self.stage_table_id is not None else '',
+            self.hub if self.hub_id is not None else ''
+        )
+        return ret
 
-   
+ 
+    
 class HubLoaderField(models.Model):
     hub_loader = models.ForeignKey(HubLoader, on_delete=models.CASCADE)
 
@@ -382,17 +429,31 @@ class HubLoaderField(models.Model):
                        data into the field specified here ''' )
     
     def __str__(self):
-        return "Hub Loader Field  :  {} {}    ".format(
-            self.stage_table_field.field_name,
-            self.hub_loader,
-            )
-
+        ret = '{} {}'.format( self.hub_loader if self.hub_loader_id is not None else '',
+                              self.stage_table_field if self.stage_table_field_id is not None else '')
+        return ret
    
 class HubSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
 
     hub_loader = models.ForeignKey(HubLoader,
                                     on_delete=models.CASCADE)
+
+    hub_satelite = models.ForeignKey(HubSatelite,
+                                     on_delete=models.CASCADE,
+                                     blank=True,
+                                     null=True)
+
+    def __str__(self):
+        ret = '{} -> \n {} -> \n {}'.format(
+            self.stage_table if self.stage_table_id is not None else '',
+            self.hub_loader if self.hub_loader_id is not None else '',
+            self.hub_satelite if self.hub_satelite_id is not None else ''
+        )
+        return ret
+    
+
+    
     
 class HubSateliteLoaderField(models.Model):
     hub_satelite_loader = models.ForeignKey(HubSateliteLoader,
@@ -418,12 +479,71 @@ class HubSateliteLoaderField(models.Model):
 
 class LinkLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
-    hub_loaders = models.ManyToManyField(HubLoader)
-   
+    link = models.ForeignKey(Link, on_delete=models.CASCADE)
+    comment = models.CharField(max_length=200, blank=True)
+    hub_loaders = models.ManyToManyField(
+        HubLoader,
+        through='LinkLoaderToHubLoader',
+        through_fields=( 'link_loader', 'hub_loader'),
+    )
+
+    def __str__(self):
+        if hasattr(self, 'link') and self.link is not None:
+            link_name = self.link.table_name
+        else:
+            link_name = ''
+        if hasattr(self, 'stage_table') and self.stage_table is not None:
+            st_name = self.stage_table.table_name
+        else:
+            st_name = ''
+        return '{} -> {}'.format(st_name, link_name)
+    
+            
+class LinkLoaderToHubLoader(models.Model):
+    hub_loader = models.ForeignKey(HubLoader, on_delete=models.CASCADE)
+    link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
+    hub_reference = models.ForeignKey(LinkHubReference, on_delete=models.CASCADE, blank=True, null=True)
+    forms_part_of_link_diff_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=True,
+        help_text = '''This hub will be included in the diff key hash ''' )
+
+    forms_part_of_link_driving_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=True,
+        help_text = '''This hub will be included in the driving key of the link ''' )
+
+    def __str__(self):
+        ret = '{} via {}'.format(
+            self.link_loader if self.link_loader_id is not None else '',
+            self.hub_loader if self.hub_loader_id is not None else ''
+        )
+        return ret
+
+    
 class LinkLoaderField(models.Model):
     link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
     stage_table_field = models.ForeignKey(StageTableField,
                                           on_delete=models.CASCADE)
+    forms_part_of_link_diff_key = models.BooleanField(
+        blank=True,
+        null=True,
+        default=True,
+        help_text = '''This field will be included in the diff key hash ''' )
+    
+    create_field_like_this_in_link = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''If a field with this name does not exist in the link, then
+                       a field will be created when this record is saved ''' )
+    
+    link_field_name= models.CharField(
+        max_length=200,
+        blank=True,
+        help_text = '''The link field that will get populated by load routines ''' )
    
 class LinkSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable,

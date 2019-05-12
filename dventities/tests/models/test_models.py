@@ -59,7 +59,11 @@ class LinkTests(TestCase):
         hub1.save()
         hub1.hubkeyfield_set.create(field_name='f1', field_type='string', field_length=20)
         #print(dir(hub1))
-        
+
+        link1 = Link(name='link1')
+        link1.clean()
+        link1.save()
+
         hub_sat1 = HubSatelite(name='sat1')
         hub_sat1.hub = hub1
         hub_sat1.clean()
@@ -83,6 +87,22 @@ class LinkTests(TestCase):
         hlf.clean()
         hlf.save()
 
+        ll = LinkLoader()
+        ll.stage_table = st
+        ll.clean()
+        ll.save()
+        llf = LinkLoaderField()
+        llf.link_loader = ll
+        llf.stage_table_field = f1
+        llf.clean()
+        llf.save()
+        ll.hub_loaders.add(hl)
+        ll.clean()
+        ll.save()
+        print(ll.hub_loaders.all())
+        
+
+        print(dir(ll))
         #print(dir(f1))
         print('Field used in hubloaders')
         for f in f1.hubloaderfield_set.all():
