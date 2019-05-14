@@ -16,7 +16,7 @@ class HubTableGenerator():
         self.field_list.append(self.hub.get_load_time_field())
         self.field_list.append(self.hub.get_record_source_field())
         
-        for f in hub.key_fields.all():
+        for f in hub.hubkeyfield_set.all():
             self.field_list.append(f)
         
 

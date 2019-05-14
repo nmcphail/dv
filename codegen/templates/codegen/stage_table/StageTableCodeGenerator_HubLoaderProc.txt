@@ -1,0 +1,41 @@
+
+
+/*
+    This code is generated using the template
+    codegen/stage_table/StageTableCodeGenerator_HubLoaderProc.txt
+
+*/
+
+
+create or replace procedure {{gen.hub_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
+BEGIN
+
+
+INSERT INTO  {{gen.hub_loader.hub.schema}}.{{gen.hub_loader.hub.table_name}}  (
+   {{gen.hub_loader.hub.get_record_source_field.column_name}},
+   {{gen.hub_loader.hub.get_load_time_field.column_name}},
+   {{gen.hub_loader.hub.get_hash_key_field.column_name}},
+   {% include "../utils/field_names.txt" with field_list=gen.hub_key_fields  %}
+
+)
+
+select distinct
+
+    {{gen.record_source_field.column_name}},
+    {{gen.load_time_field.column_name}},
+    {{gen.hub_loader.hub.get_hash_key_field.column_name}},
+    {% include "../utils/field_names.txt" with field_list=gen.hub_key_fields_from_stage_table  %}
+
+from
+    {{gen.combined_view_name}} cv
+
+where
+
+    cv.{{gen.hub_loader.hub.get_hash_key_field.column_name}}
+    not in ( select {{gen.hub_loader.hub.get_hash_key_field.column_name}} from {{gen.hub_loader.hub.table_name}} )
+    and cv.{{gen.processed_field.column_name}} = p_processed
+    and cv.{{gen.load_time_field.column_name}} = p_load_time ;
+    
+
+END;
+

@@ -1,0 +1,96 @@
+
+
+/*
+    This code is generated using the template
+    codegen/stage_table/StageTableCodeGenerator_AgumentedTableInsertProc.txt
+
+*/
+
+
+###
+
+
+
+####
+
+
+
+
+
+
+
+create or replace procedure {{gen.stage_table.schema}}.{{gen.augmented_table_insert_proc_name}} as
+BEGIN
+
+    declare load_date timestamp := current_timestamp ;
+
+    INSERT INTO {{gen.augmented_table_name}} (
+        {% include "../utils/field_names.txt" with field_list=gen.primary_key_fields  %}
+	
+	,{{gen.load_date_field.column_name}}
+
+        {% for hl in gen.hub_loaders %}
+           , {{hl.hub.get_hash_key_field.column_name}}
+        {% endfor %}
+
+        {% for hsl in gen.hub_satelite_loaders %}
+           , {{hsl.hub_satelite.get_diff_key_field.column_name}}
+        {% endfor %}
+
+        {% for ll in gen.link_loaders %}
+           , {{ll.link.get_hash_key_field.column_name}}
+        {% endfor %}
+
+        {% for ll in gen.link_loaders_that_require_diff_fields %}
+           , {{ll.link.get_diff_key_field.column_name}}
+        {% endfor %}
+
+        {% for lsl in gen.link_satelite_loaders  %}
+           , {{lsl.link.get_hash_key_field.column_name}}
+        {% endfor %}
+
+
+    select
+        {% include "../utils/field_names.txt" with field_list=gen.primary_key_fields alias=gen.stage_table.table_alias  %}
+	
+	,:load_date
+
+        {% for hl in gen.hub_loaders %}
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=hl.get_fields_from_stage_table_to_hash alias=gen.stage_table.table_alias  %} as {{hl.hub.get_hash_key_field.column_name}}
+        {% endfor %}
+
+
+        {% for hsl in gen.hub_satelite_loaders %}
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=hsl.get_fields_from_stage_table_to_hash_as_diff_key alias=gen.stage_table.table_alias  %} as {{hsl.hub_satelite.get_diff_key_field.column_name}}
+        {% endfor %}
+
+        {% for ll in gen.link_loaders %}
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=ll.get_fields_from_stage_table_to_hash alias=gen.stage_table.table_alias  %} as {{ll.link.get_hash_key_field.column_name}}
+        {% endfor %}
+
+        {% for ll in gen.link_loaders_that_require_diff_fields %}
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=ll.get_fields_from_stage_table_to_hash_as_diff_key alias=gen.stage_table.table_alias  %} as {{ll.link.get_diff_key_field.column_name}}
+        {% endfor %}
+
+        {% for lsl in gen.link_satelite_loaders %}
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=lsl.get_fields_from_stage_table_to_hash_as_diff_key alias=gen.stage_table.table_alias  %} as {{lsl.link_satelite.get_diff_key_field.column_name}}
+        {% endfor %}
+
+
+
+    from {{gen.stage_table.schema}}.{{gen.stage_table.table_name}} {{gen.stage_table.table_alias}} 
+    
+   
+
+    where
+        not exists ( select 'x' 
+            from {{gen.augmented_table_name}} aug
+            where 1=1
+                {% for f in gen.primary_key_fields %}
+                 and {{gen.stage_table.table_alias}}.{{f.column_name}}  = aug.{{f.column_name}}      
+                {% endfor %}
+
+       )
+     ;
+
+END;

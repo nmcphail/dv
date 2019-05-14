@@ -132,7 +132,8 @@ class FieldNonPersistent():
         if self.field_scale is None:
             self.field_scale = 0
 
-        
+    def __str__(self):
+        return "{} {} ()".format(self.column_name, self.field_type, self.field_length)
 
     def create_from_model_field(model_field):
         f = FieldNonPersistent(
@@ -158,6 +159,7 @@ class FieldNonPersistent():
         )
         return f
 
+
     def create_record_source_field():
         f = FieldNonPersistent(
             field_name = 'Load Time',     
@@ -170,6 +172,18 @@ class FieldNonPersistent():
         )
         return f
 
+    
+    def create_processed_field():
+        f = FieldNonPersistent(
+            field_name = 'Processed',     
+            field_type = 'datetime',       
+            field_precision = 0, 
+            field_scale = 0 , 
+            field_description = 0,
+            field_length = 4,
+            column_name = 'processed'
+        )
+        return f
     
     
 class Satelite(DVEntity):
@@ -344,6 +358,17 @@ class LinkHubReference(models.Model):
 class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
+    def clean(self):
+        self.schema = self.vault
+        if self.table_name is None or self.table_name == '':
+            self.table_name = (self.link.name + \
+                               '_' + \
+                               self.name + \
+                               '_sat').replace(' ', '_').lower()
+
+        if self.table_alias is None or self.table_alias == '':
+            self.table_alias = self.name.replace(' ', '_').lower()
+
     def __str__(self):
         ret = '{} - {}.{}'.format( self.link if self.link_id is not None else '',
                                    self.schema, self.table_name  )
@@ -399,6 +424,13 @@ class HubLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
 
+    def get_fields_from_stage_table_to_hash(self):
+        ret = []
+        for f in self.hubloaderfield_set.all():
+            if f.purpose ==  'hub key field':
+                ret.append(f.stage_table_field)
+        return ret    
+
     def __str__(self):
         ret = '{} -> {}'.format(
             self.stage_table if self.stage_table_id is not None else '',
@@ -444,6 +476,13 @@ class HubSateliteLoader(models.Model):
                                      blank=True,
                                      null=True)
 
+    def get_fields_from_stage_table_to_hash_as_diff_key(self):
+        ret = []
+        for f in self.hubsateliteloaderfield_set.all():
+            ret.append(f.stage_table_field)
+        return ret    
+        
+    
     def __str__(self):
         ret = '{} -> \n {} -> \n {}'.format(
             self.stage_table if self.stage_table_id is not None else '',
@@ -487,6 +526,19 @@ class LinkLoader(models.Model):
         through_fields=( 'link_loader', 'hub_loader'),
     )
 
+    def get_fields_from_stage_table_to_hash (self):
+        ret = []
+        for hl in self.hub_loaders.all():
+            for f in hl.hubloaderfield_set.all():
+                ret.append(f.stage_table_field)
+        return ret    
+
+    def get_fields_from_stage_table_to_hash_as_diff_key(self):
+        ret = []
+        for f in self.linkloaderfield_set.all():
+            ret.append(f.stage_table_field)
+        return ret    
+    
     def __str__(self):
         if hasattr(self, 'link') and self.link is not None:
             link_name = self.link.table_name
@@ -550,7 +602,15 @@ class LinkSateliteLoader(models.Model):
                                     on_delete=models.CASCADE)
 
     link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
+    link_satelite = models.ForeignKey(LinkSatelite, on_delete=models.CASCADE)
 
+
+    def get_fields_from_stage_table_to_hash_as_diff_key(self):
+        ret = []
+        for f in self.linksateliteloaderfield_set.all():
+            ret.append(f.stage_table_field)
+        return ret    
+    
     
 class LinkSateliteLoaderField(models.Model):
     link_satelite_loader = models.ForeignKey(LinkSateliteLoader,

@@ -1,0 +1,24 @@
+
+
+/*
+    This code is generated using the template
+    codegen/stage_table/AugmentedTableGenerator.txt
+
+*/
+
+create table {{gen.stage_table.schema}}.{{ gen.stage_table.table_name }}_aug (
+
+{% include "../utils/field_definition.txt" with field_list=gen.field_list  %}
+
+);
+
+
+
+ALTER TABLE  {{gen.stage_table.schema}}.{{ gen.stage_table.table_name }}_aug
+   ADD  CONSTRAINT  {{ gen.stage_table.table_name }}_pk
+   PRIMARY KEY (
+{% include "../utils/field_names.txt" with field_list=gen.primary_key_fields %}
+
+   );
+
+

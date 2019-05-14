@@ -99,19 +99,19 @@ class LinkTests(TestCase):
         ltg = LinkTableGenerator(LinkTests.test_link)
         generated_text = ltg.get_artifact_text().replace('\n', ' ').lower() 
 
-        hub_ref1 = LinkHubReference(hub_alias='hub1')
+        hub_ref1 = LinkHubReference(hub_alias='alias_for_hub1')
         hub_ref1.hub = LinkTests.hub1
         hub_ref1.link = LinkTests.test_link
         hub_ref1.clean()
         hub_ref1.save()
 
-        hub_ref2 = LinkHubReference(hub_alias='hub2')
+        hub_ref2 = LinkHubReference(hub_alias='alias_for_hub2')
         hub_ref2.hub = LinkTests.hub2
         hub_ref2.link = LinkTests.test_link
         hub_ref2.clean()
         hub_ref2.save()
         
-        hub_ref3 = LinkHubReference(hub_alias='hub2')
+        hub_ref3 = LinkHubReference(hub_alias='alias_for_hub2')
         hub_ref3.hub = LinkTests.hub1
         hub_ref3.link = LinkTests.test_link
         hub_ref3.clean()
@@ -127,10 +127,14 @@ class LinkTests(TestCase):
         #print(ltg.get_artifact_text())
         generated_text = ltg.get_artifact_text().replace('\n', ' ').lower()
 
-        self.assertIn('hub1_hub1_hk', generated_text)
-        self.assertIn('hub2_hub2_hk', generated_text)
-        self.assertIn('hub1_hub2_hk', generated_text)
-        self.assertIn('hub1_hk', generated_text)
+        # Expecting a field name for the hub1 aliasing hub 1
+        self.assertIn( '{}_{}_hk'.format(LinkTests.hub1.table_name, hub_ref1.hub_alias), generated_text)
+        # Expecting a field name for the hub2 aliasing hub 2
+        self.assertIn( '{}_{}_hk'.format(LinkTests.hub2.table_name, hub_ref2.hub_alias), generated_text)
+        # Expecting a field name for the hub1 aliasing hub 2
+        self.assertIn( '{}_{}_hk'.format(LinkTests.hub1.table_name, hub_ref2.hub_alias), generated_text)
+        # Expecting a field name for the hub1 with no alias 
+        self.assertIn( '{}_hk'.format(LinkTests.hub1.table_name, hub_ref2.hub_alias), generated_text)
         
         
     def test_table_creation_link_satelite(self):

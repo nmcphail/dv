@@ -89,14 +89,16 @@ class LinkTests(TestCase):
 
         ll = LinkLoader()
         ll.stage_table = st
+        ll.link = link1
         ll.clean()
         ll.save()
+        
         llf = LinkLoaderField()
         llf.link_loader = ll
         llf.stage_table_field = f1
         llf.clean()
         llf.save()
-        ll.hub_loaders.add(hl)
+        ll.hub_loaders.add(hl, )
         ll.clean()
         ll.save()
         print(ll.hub_loaders.all())
