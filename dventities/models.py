@@ -6,6 +6,10 @@ def convert_person_readable_fieldname(fieldname):
     f = fieldname.replace(' ', '_')
     return f
 
+def convert_entity_name_to_table_name(entity_name):
+    return entity_name.replace(' ', '_').lower()
+
+
 class DVEntity(models.Model):
     name = models.CharField(
         max_length=200,
@@ -159,19 +163,42 @@ class FieldNonPersistent():
         )
         return f
 
-
-    def create_record_source_field():
+    def create_load_time_field():
         f = FieldNonPersistent(
             field_name = 'Load Time',     
             field_type = 'datetime',       
             field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = None,
+            column_name = 'rldt'
+        )
+        return f
+
+    def create_record_source_field():
+        f = FieldNonPersistent(
+            field_name = 'Record Source',     
+            field_type = 'string',       
+            field_precision = 0, 
             field_scale = 0 , 
             field_description = 0,
-            field_length = 4,
+            field_length = 200,
             column_name = 'rsrc'
         )
         return f
 
+    def create_snapshot_time_field():
+        f = FieldNonPersistent(
+            field_name = 'Snapshot Time',     
+            field_type = 'datetime',       
+            field_precision = 0, 
+            field_scale = 0 , 
+            field_description = 0,
+            field_length = 200,
+            column_name = 'snapshot_time'
+        )
+        return f
+    
     
     def create_processed_field():
         f = FieldNonPersistent(
@@ -203,6 +230,11 @@ class Satelite(DVEntity):
 class Hub(RootEntity):
     pass
 
+    @property
+    def parent(self):
+        return None
+
+    
     def clean(self):
         self.schema = self.vault
         if self.root_name is None or self.root_name == '':
@@ -227,6 +259,18 @@ class Hub(RootEntity):
         )
         return f
 
+    def get_pit_table_primary_key_field(self):
+        f = FieldNonPersistent(
+            field_name = 'Pit Table PK',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_pit_pk'
+        )
+        return f
+
     def __str__(self):
         ret = '{}.{}'.format(self.schema, self.table_name)
         return ret
@@ -244,9 +288,14 @@ class HubKeyField(Field):
             self.field_name)
         return ret
 
+    
 class HubSatelite(Satelite):
     hub = models.ForeignKey(Hub, on_delete=models.CASCADE)
 
+    @property
+    def parent(self):
+        return self.hub
+    
     def clean(self):
         self.schema = self.vault
         if self.table_name is None or self.table_name == '':
@@ -263,10 +312,21 @@ class HubSatelite(Satelite):
                                    self.schema, self.table_name  )
         return ret
 
+    def get_pit_table_load_time_field(self):
+        f = FieldNonPersistent.create_load_time_field()
+        f.column_name = self.table_alias + '_' + f.column_name
+        return f
+
+    def get_pit_table_hash_key_field(self):
+        f = self.hub.get_hash_key_field()
+        f.column_name = self.table_alias + '_hk'
+        return f
+    
+
+    
 class HubSateliteField(Field):
     sat = models.ForeignKey(HubSatelite,
-                            on_delete=models.CASCADE,
-                            related_name='fields' )
+                            on_delete=models.CASCADE)
     
     def __str__(self):
         ret = '{}.{}'.format( self.sat if self.sat_id is not None else '',
@@ -306,6 +366,18 @@ class Link(RootEntity):
         )
         return f
 
+    def get_pit_table_primary_key_field(self):
+        f = FieldNonPersistent(
+            field_name = 'Pit Table PK',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_pk'
+        )
+        return f
+
     def __str__(self):
         ret = '{}.{}'.format( self.schema, self.table_name)
         return ret
@@ -315,7 +387,7 @@ class LinkField(Field):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
     def __str__(self):
-        ret = '{}.{}'.format( link if self.link_id is not None else '',
+        ret = '{}.{}'.format( self.link if self.link_id is not None else '',
                               self.column_name)
         return ret
 
@@ -412,8 +484,36 @@ class StageTableField(Field):
         help_text = '''This field represents the primary key of the stage table.  A similar primary key will
                        be created on the augmented table, and then a view will combined fields in the stage table 
                        with fields in the augmented table''' )
-    
 
+    def get_usage_summary(self):
+        summary = []
+        summary.append( ('stage_table_field', 0, 'Primary Key : {}'.format(self.stage_table_primary_key)))
+
+        for hub_loader_field in self.hubloaderfield_set.all():
+            summary.append(('hub_loader_field', 1 , hub_loader_field.__str__()))
+            summary.append(('hub_loader',       2, hub_loader_field.hub_loader))
+            summary.append(('hub',              3, hub_loader_field.hub_loader.hub))
+            summary.append(('hub key field'   , 4, hub_loader_field.get_corresponding_hub_field))
+            
+        for hub_satelite_loader_field in self.hubsateliteloaderfield_set.all():
+            summary.append(('hub_satelite_field' , 1, hub_satelite_loader_field.__str__()))
+            summary.append(('hub_satelite_loader', 2, hub_satelite_loader_field.hub_satelite_loader))
+            summary.append(('hub_satelite'       , 3, hub_satelite_loader_field.hub_satelite_loader.hub_satelite))
+            summary.append(('hub_satelite_field' , 4, hub_satelite_loader_field.get_corresponding_hub_satelite_field))
+
+        for link_loader_field in self.linkloaderfield_set.all():
+            summary.append(('link_loader_field', 1 , link_loader_field.__str__()))
+            summary.append(('link_loader',       2, link_loader_field.link_loader))
+            summary.append(('link',              3, link_loader_field.link_loader.link))
+            summary.append(('link field'   , 4, link_loader_field.get_corresponding_link_field))
+            
+        for link_satelite_loader_field in self.linksateliteloaderfield_set.all():
+            summary.append(('link_satelite_field' , 1, link_satelite_loader_field.__str__()))
+            summary.append(('link_satelite_loader', 2, link_satelite_loader_field.link_satelite_loader))
+            summary.append(('link_satelite'       , 3, link_satelite_loader_field.link_satelite_loader.link_satelite))
+            summary.append(('link_satelite_field' , 4, link_satelite_loader_field.get_corresponding_link_satelite_field))
+
+        return summary 
 
     def __str__(self):
         ret = '{}.{}'.format( self.stage_table if self.stage_table_id is not None else '',
@@ -464,7 +564,21 @@ class HubLoaderField(models.Model):
         ret = '{} {}'.format( self.hub_loader if self.hub_loader_id is not None else '',
                               self.stage_table_field if self.stage_table_field_id is not None else '')
         return ret
-   
+
+    def get_corresponding_hub_field(self):
+        hub_field = None
+        for f in self.hub_loader.hub.hubkeyfield_set.all():
+            if self.hub_field_name == '':
+                if f.field_name == self.stage_table_field.field_name:
+                    hub_field = f
+                    break
+            else:
+                if self.hub_field_name == f.field_name:
+                    hub_field = f
+        return hub_field
+
+
+    
 class HubSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
 
@@ -482,6 +596,8 @@ class HubSateliteLoader(models.Model):
             ret.append(f.stage_table_field)
         return ret    
         
+
+
     
     def __str__(self):
         ret = '{} -> \n {} -> \n {}'.format(
@@ -514,8 +630,41 @@ class HubSateliteLoaderField(models.Model):
         blank=True,
         help_text = '''The satelite field that will get populated by load routines ''' )
 
-   
+    def __str__(self):
+        return "stage table field : {} - with satelite field name {} ".format(self.stage_table_field.field_name, self.satelite_field_name)
 
+    def get_corresponding_hub_satelite_field(self):
+        sat_field = None
+        for f in self.hub_satelite_loader.hub_satelite.hubsatelitefield_set.all():
+            if self.satelite_field_name == '':
+                if f.field_name == self.stage_table_field.field_name:
+                    sat_field = f
+                    break
+            else:
+                if self.satelite_field_name == f.field_name:
+                    sat_field = f
+        return sat_field
+                
+
+    def save(self):
+        super().save()
+    
+        if self.create_field_like_this_in_satelite:
+            corresponding_field = self.get_corresponding_hub_satelite_field()
+            if corresponding_field is None:
+                f = HubSateliteField(
+                    field_name=self.stage_table_field.field_name,
+                    field_type=self.stage_table_field.field_type,
+                    field_length=self.stage_table_field.field_length,
+                    field_precision=self.stage_table_field.field_precision,
+                    field_scale=self.stage_table_field.field_scale)
+                f.sat = self.hub_satelite_loader.hub_satelite
+                f.clean()
+                f.save()
+                
+
+
+    
 class LinkLoader(models.Model):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
@@ -538,6 +687,7 @@ class LinkLoader(models.Model):
         for f in self.linkloaderfield_set.all():
             ret.append(f.stage_table_field)
         return ret    
+
     
     def __str__(self):
         if hasattr(self, 'link') and self.link is not None:
@@ -596,7 +746,43 @@ class LinkLoaderField(models.Model):
         max_length=200,
         blank=True,
         help_text = '''The link field that will get populated by load routines ''' )
-   
+
+
+    def get_corresponding_link_field(self):
+        link_field = None
+        for f in self.link_loader.link.linkfield_set.all():
+            if self.link_field_name == '':
+                if f.field_name == self.stage_table_field.field_name:
+                    link_field = f
+                    break
+            else:
+                if self.link_field_name == f.field_name:
+                    link_field = f
+        return link_field
+
+
+    def save(self):
+        super().save()
+    
+        if self.create_field_like_this_in_link:
+            corresponding_field = self.get_corresponding_link_field()
+            if corresponding_field is None:
+                f = LinkField(
+                    field_name=self.stage_table_field.field_name,
+                    field_type=self.stage_table_field.field_type,
+                    field_length=self.stage_table_field.field_length,
+                    field_precision=self.stage_table_field.field_precision,
+                    field_scale=self.stage_table_field.field_scale)
+                f.link = self.link_loader.link
+                f.clean()
+                f.save()
+
+
+    
+    def __str__(self):
+        return "stage table field : {} - with link field name {} ".format(self.stage_table_field.field_name, self.link_field_name)
+
+    
 class LinkSateliteLoader(models.Model):
     stage_table = models.ForeignKey(StageTable,
                                     on_delete=models.CASCADE)
@@ -604,12 +790,21 @@ class LinkSateliteLoader(models.Model):
     link_loader = models.ForeignKey(LinkLoader, on_delete=models.CASCADE)
     link_satelite = models.ForeignKey(LinkSatelite, on_delete=models.CASCADE)
 
+    comment = models.CharField(max_length=200, blank=True)
 
     def get_fields_from_stage_table_to_hash_as_diff_key(self):
         ret = []
         for f in self.linksateliteloaderfield_set.all():
             ret.append(f.stage_table_field)
         return ret    
+
+    def __str__(self):
+        ret = '{} -> \n {} -> \n {}'.format(
+            self.stage_table if self.stage_table_id is not None else '',
+            self.link_loader if self.link_loader_id is not None else '',
+            self.link_satelite if self.link_satelite_id is not None else ''
+        )
+        return ret
     
     
 class LinkSateliteLoaderField(models.Model):
@@ -617,3 +812,31 @@ class LinkSateliteLoaderField(models.Model):
                                             on_delete=models.CASCADE)
     stage_table_field = models.ForeignKey(StageTableField,
                                           on_delete=models.CASCADE)
+    link_satelite_field_name= models.CharField(
+        max_length=200,
+        blank=True,
+        help_text = '''The satelite field that will get populated by load routines ''' )
+
+    comment = models.CharField(max_length=200, blank=True)
+    create_field_like_this_in_satelite = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
+        help_text = '''If a field with this name does not exist in the satelite, then
+                       a field will be created when this record is saved ''' )
+    
+    def get_corresponding_link_satelite_field(self):
+        link_satelite_field = None
+        for f in self.link_satelite_loader.link_satelite.linksatelitefield_set.all():
+            if self.link_satelite_field_name == '':
+                if f.field_name == self.stage_table_field.field_name:
+                    link_satelite_field = f
+                    break
+            else:
+                if self.link_satelite_field_name == f.field_name:
+                    link_satelite_field = f
+        return link_satelite_field
+
+
+    def __str__(self):
+        return "stage table field : {} - with link satelite field name {} ".format(self.stage_table_field.field_name, self.link_satelite_field_name)

@@ -3,13 +3,14 @@ from django import forms
 
 # Register your models here.
 
+#from admirarchy.toolbox import HierarchicalModelAdmin, AdjacencyList
 
 from .models import Hub, HubKeyField, HubSatelite, HubSateliteField
 from .models import Link, LinkHubReference, LinkSatelite
 from .models import StageTable, StageTableField, HubLoader, HubLoaderField
 from .models import HubSateliteLoader, HubSateliteLoaderField
 from .models import LinkLoader, LinkLoaderField, LinkSateliteLoader, LinkSateliteLoaderField, LinkLoaderToHubLoader
-
+from .models import *
 
 
 class HubKeyFieldInline(admin.TabularInline):
@@ -24,18 +25,18 @@ class HubSateliteInline(admin.TabularInline):
     
 class HubAdmin(admin.ModelAdmin):
     readonly_fields = ['schema']
+    #hierarchy = AdjacencyList(None)
     inlines = [HubKeyFieldInline, HubSateliteInline]
-
     
 admin.site.register(Hub, HubAdmin)
 admin.site.register(HubKeyField)
-
 
 class HubSateliteFieldInline(admin.TabularInline):
     model = HubSateliteField
     extra = 0
 
 class HubSateliteAdmin(admin.ModelAdmin):
+    #hierarchy = AdjacencyList('hub')
     inlines = [HubSateliteFieldInline]
 
 admin.site.register(HubSatelite, HubSateliteAdmin)
@@ -52,16 +53,16 @@ class LinkSateliteInline(admin.TabularInline):
     show_change_link = True
     extra = 0
 
+class LinkFieldInline(admin.TabularInline):
+    model = LinkField
+    extra = 0
 
 class LinkAdmin(admin.ModelAdmin):
     readonly_fields = ['schema']
-    inlines = [LinkHubReferenceInline, LinkSateliteInline]
+    inlines = [LinkHubReferenceInline, LinkSateliteInline, LinkFieldInline]
     #fields = ['pub_date', 'question_text']
 
 admin.site.register(Link, LinkAdmin)
-
-
-
 
 #
 # Logic for stage table and loaders starts
@@ -135,7 +136,6 @@ class HubSateliteLoaderForm(forms.ModelForm):
         else:
             self.fields['hub_satelite'].queryset = HubSatelite.objects.none()
             
-            
        
 class HubSateliteLoaderInline(admin.TabularInline):
     model = HubSateliteLoader
@@ -143,8 +143,6 @@ class HubSateliteLoaderInline(admin.TabularInline):
     form = HubSateliteLoaderForm
     formset = HubSateliteLoaderFormSet
     show_change_link = True
-
-
 
 #
 # Deal with Hub Satelite Loader 
@@ -172,8 +170,8 @@ class HubSateliteLoaderFieldFormSet(forms.BaseInlineFormSet):
         #print('self instance', self.instance)
         kwargs['parent_object'] = self.instance
         return kwargs
-        
        
+      
 class HubSateliteLoaderFieldInline(admin.TabularInline):
     model = HubSateliteLoaderField
     extra = 0
@@ -187,8 +185,6 @@ class HubSateliteLoaderAdmin(admin.ModelAdmin):
 
     
 admin.site.register(HubSateliteLoader, HubSateliteLoaderAdmin)
-
-
 
 
 #######
@@ -223,9 +219,6 @@ class LinkLoaderFieldInline(admin.TabularInline):
     form = LinkLoaderFieldForm
     formset = LinkLoaderFieldFormSet
 
-
-
-
 #
 # LinkLoaderToHubLoader
 #
@@ -253,19 +246,21 @@ class LinkLoaderToHubLoaderForm(forms.ModelForm):
             self.fields['hub_loader'].queryset = self.parent_object.stage_table.hubloader_set.all()
         else:
             self.fields['hub_loader'].queryset = HubLoader.objects.none()
-            
 
-    
+
 class LinkLoaderToHubLoaderInline(admin.TabularInline):
     model = LinkLoaderToHubLoader
     extra = 0
     form = LinkLoaderToHubLoaderForm
     formset = LinkLoaderToHubLoaderFormSet
 
+
+
+
+    
 #
 # Link Loader
 #
-
     
 class LinkLoaderFormSet(forms.BaseInlineFormSet):
 
@@ -273,7 +268,6 @@ class LinkLoaderFormSet(forms.BaseInlineFormSet):
         kwargs = super().get_form_kwargs(index)
         kwargs['parent_object'] = self.instance
         return kwargs
-
 
 
 class LinkLoaderForm(forms.ModelForm):
@@ -292,7 +286,8 @@ class LinkLoaderForm(forms.ModelForm):
         print(self.fields)
         if self.parent_object is not None:
             stage_table = self.parent_object
-        elif self.instance is not None and hasattr(self.instance, 'stage_table') and self.instance.stage_table_id is not None :
+        elif self.instance is not None and hasattr(self.instance, 'stage_table') \
+             and self.instance.stage_table_id is not None :
             stage_table = self.instance.stage_table
             
 
@@ -312,6 +307,86 @@ class LinkLoaderAdmin(admin.ModelAdmin):
 
     
 admin.site.register(LinkLoader, LinkLoaderAdmin)
+
+
+
+#
+# Deal with Link Satelite Loader 
+#
+class LinkSateliteLoaderFormSet(forms.BaseInlineFormSet):
+
+    def get_form_kwargs(self, index):
+        kwargs = super().get_form_kwargs(index)
+        kwargs['parent_object'] = self.instance
+        return kwargs
+
+class LinkSateliteLoaderForm(forms.ModelForm):
+   
+    class Meta:
+        model = LinkSateliteLoader
+        fields = '__all__'
+       
+    def __init__(self,  *args, parent_object=None,  **kwargs):
+        self.parent_object = parent_object
+        super(LinkSateliteLoaderForm, self).__init__(*args, **kwargs)
+
+        if self.parent_object is not None:
+            self.fields['link_loader'].queryset = self.parent_object.linkloader_set.all()
+
+        if hasattr(self.instance, 'link_loader'):
+            pass
+            #self.fields['link_satelite'].queryset = self.instance.link_loader.link.linksatelite_set.all()
+        else:
+            pass
+            #self.fields['link_satelite'].queryset = LinkSatelite.objects.none()
+            
+       
+class LinkSateliteLoaderInline(admin.TabularInline):
+    model = LinkSateliteLoader
+    extra = 0
+    form = LinkSateliteLoaderForm
+    formset = LinkSateliteLoaderFormSet
+    show_change_link = True
+
+class LinkSateliteLoaderFieldForm(forms.ModelForm):
+   
+    class Meta:
+        model = LinkSateliteLoaderField
+        fields = '__all__'
+       
+    def __init__(self,  *args, parent_object=None,  **kwargs):
+        self.parent_object = parent_object
+        super(LinkSateliteLoaderFieldForm, self).__init__(*args, **kwargs)
+
+        if self.parent_object is not None:
+            self.fields['stage_table_field'].queryset = self.parent_object.stage_table.stagetablefield_set.all()
+            
+
+class LinkSateliteLoaderFieldFormSet(forms.BaseInlineFormSet):
+
+    def get_form_kwargs(self, index):
+        kwargs = super().get_form_kwargs(index)
+        #print('get form kwargs', index)
+        #print('self instance', self.instance)
+        kwargs['parent_object'] = self.instance
+        return kwargs
+       
+      
+class LinkSateliteLoaderFieldInline(admin.TabularInline):
+    model = LinkSateliteLoaderField
+    extra = 0
+    form = LinkSateliteLoaderFieldForm
+    formset = LinkSateliteLoaderFieldFormSet
+
+    
+class LinkSateliteLoaderAdmin(admin.ModelAdmin):
+    form = LinkSateliteLoaderForm
+    inlines = [LinkSateliteLoaderFieldInline]
+
+    
+admin.site.register(LinkSateliteLoader, LinkSateliteLoaderAdmin)
+
+
 
 #######
 
@@ -345,7 +420,8 @@ class StageTableAdmin(admin.ModelAdmin):
     inlines = [StageTableFieldInline,
                StageTableHubLoaderInline,
                HubSateliteLoaderInline,
-               StageTableLinkLoaderInline]
+               StageTableLinkLoaderInline,
+               LinkSateliteLoaderInline]
 
    
 admin.site.register(StageTable, StageTableAdmin)

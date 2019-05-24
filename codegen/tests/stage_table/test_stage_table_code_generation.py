@@ -25,10 +25,10 @@ class StageTableTests(TestCase):
         f1.clean()
         f1.save()
         
-        cls.test_link = Link(name='my test link', create_diff_key=True)
+        cls.test_link = Link(name='link1', create_diff_key=True)
         cls.test_link.clean()
         cls.test_link.save()
-        f1 = LinkField(field_name='f1',
+        f1 = LinkField(field_name='link1_field1',
                          field_precision=0,
                          field_scale=0,
                          field_type='string',
@@ -72,7 +72,7 @@ class StageTableTests(TestCase):
         cls.link1 = Link(name='link1', create_diff_key=True)
         cls.link1.clean()
         cls.link1.save()
-        f1 = LinkField(field_name='f1',
+        f1 = LinkField(field_name='link1_field1',
                          field_precision=0,
                          field_scale=0,
                          field_type='string',
@@ -85,6 +85,11 @@ class StageTableTests(TestCase):
         cls.link1sat1.link = cls.link1
         cls.link1sat1.clean()
         cls.link1sat1.save()
+
+        cls.link1sat1f1 = LinkSateliteField(field_name='link1_sat1_f1')
+        cls.link1sat1f1.sat = cls.link1sat1
+        cls.link1sat1f1.clean()
+        cls.link1sat1f1.save()
 
     def test_augmented_table_creation1(self):
         """
@@ -111,6 +116,11 @@ class StageTableTests(TestCase):
         hs1.create_diff_key = True
         hs1.clean()
         hs1.save()
+
+        hs1f1 = HubSateliteField(field_name='hs1f1', field_type='string', field_length=20)
+        hs1f1.sat = hs1
+        hs1f1.clean()
+        hs1f1.save()
 
         hsl = HubSateliteLoader(stage_table=st )
         hsl.hub=hub1
@@ -172,6 +182,22 @@ class StageTableTests(TestCase):
         self.assertIn( 'hash_input', generated_text)
         self.assertIn( 'hub1_hub_hk', generated_text)
 
+
+        try:    
+            generated_text = atg.get_hub_loader_proc_text(hl).lower()
+        except CodeGenerationError:
+            pass
+        else:
+            self.fail(msg='Expected a failure becasue the stage table field was field 1 and there was no "field1" in the hub - the field in the hub is "hub1 key field 1" ')
+
+        #hslf.satelite_field_name = 'hs1f1'
+        #hslf.clean()
+        #hslf.save()
+        hlf = hl.hubloaderfield_set.first()
+        hlf.hub_field_name = 'hub1 key field 1'
+        hlf.clean()
+        hlf.save()
+    
         generated_text = atg.get_hub_loader_proc_text(hl).lower()
         #print(generated_text)
         self.assertIn( 'stagetablecodegenerator_hubloaderproc', generated_text)
@@ -183,11 +209,54 @@ class StageTableTests(TestCase):
         self.assertIn( 'join {}'.format(atg.augmented_table_name) , generated_text)
         for f in atg.stage_table.stagetablefield_set.filter(usage='physical'):
             self.assertIn('st.{}'.format(f.column_name), generated_text)
+
+        try:    
+            generated_text = atg.get_hub_satelite_loader_proc_text(hsl).lower()
+        except CodeGenerationError:
+            pass
+        else:
+            self.fail(msg='Expected a failure becasue the stage table field was field 1 and there was no "field1" in the satelite')
+
+        hslf.satelite_field_name = 'hs1f1'
+        hslf.clean()
+        hslf.save()
+
+        generated_text = atg.get_hub_satelite_loader_proc_text(hsl).lower()
         
+        self.assertIn( 'stagetablecodegenerator_hubsateliteloaderproc', generated_text)
+        self.assertIn( 'create or replace procedure {}'.format(atg.hub_satelite_loader_proc_name) , generated_text)
+        for f in atg.hub_satelite_fields_from_stage_table:
+            self.assertIn(hslf.stage_table_field.field_name, generated_text)
         
         #print(generated_text)
+        try:    
+            generated_text = atg.get_link_loader_proc_text(ll).lower()
+
+        except CodeGenerationError:
+            pass
+        else:
+            self.fail(msg='Expected a failure becasue the stage table field was field 1 and there was no "field1" in the satelite')
+
+        llf.link_field_name = 'link1_field1'
+        llf.clean()
+        llf.save()
         
-        
+        generated_text = atg.get_link_loader_proc_text(ll).lower()
+        #print(generated_text)
         #print(atg.get_augmented_table_insert_proc_text())
+        try:    
+            generated_text = atg.get_link_satelite_loader_proc_text(lsl).lower()
+
+        except CodeGenerationError:
+            pass
+        else:
+            self.fail(msg='Expected a failure becasue the stage table field was field 1 and there was no "field1" in the satelite')
+        lslf.link_satelite_field_name = 'link1_sat1_f1'
+        lslf.clean()
+        lslf.save()
+
+        
+        generated_text = atg.get_link_satelite_loader_proc_text(lsl).lower()
+        #print(generated_text)
         
         

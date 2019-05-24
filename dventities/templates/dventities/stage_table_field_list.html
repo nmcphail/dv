@@ -1,0 +1,17 @@
+<html>
+
+  <table>
+    
+  {% for stage_table_field in stage_table_fields %}
+  <tr> <td> {{stage_table_field.field_name}} </td> <td> {{stage_table_field.id}} </td> </tr>
+      {%  for sum in stage_table_field.get_usage_summary %}
+      <tr>
+        <td>{{ sum.0 }} </td>
+        <td>{{ sum.1 }} </td>
+        <td>{{ sum.2 }} </td>
+    
+      </tr>  
+      {% endfor %}
+  {% endfor %}
+  </table>
+</html>  

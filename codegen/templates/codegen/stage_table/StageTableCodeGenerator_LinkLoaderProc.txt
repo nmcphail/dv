@@ -1,0 +1,42 @@
+
+
+/*
+    This code is generated using the template
+    codegen/stage_table/StageTableCodeGenerator_LinkLoaderProc.txt
+*/
+
+create or replace procedure {{gen.link_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
+BEGIN
+
+INSERT INTO  {{gen.link_loader.link.schema}}.{{gen.link_loader.link.table_name}}  (
+   {{gen.record_source_field.column_name}},
+   {{gen.load_time_field.column_name}},
+   {{gen.link_loader.link.get_hash_key_field.column_name}},
+   {% include "../utils/field_names.txt" with field_list=gen.link_fields  %}
+)
+
+select distinct
+
+    {{gen.record_source_field.column_name}},
+    {{gen.load_time_field.column_name}},
+    {{gen.link_loader.link.get_hash_key_field.column_name}},
+    {% include "../utils/field_names.txt" with field_list=gen.link_fields_from_stage_table  %}
+
+from
+    {{gen.combined_view_name}} cv
+
+where
+
+       not exists ( select 'x' 
+            from
+                  {{gen.link_loader.link.schema}}.{{gen.link_loader.link.table_name}} link
+            where 1=1
+                 and link.{{gen.link_loader.link.get_hash_key_field.column_name}} = cv.{{gen.link_loader.link.get_hash_key_field.column_name}}
+		 and link.{{gen.link_loader.link.get_diff_key_field.column_name}} = cv.{{gen.link_loader.link.get_diff_key_field.column_name}}
+
+       );
+
+    
+
+END;
+

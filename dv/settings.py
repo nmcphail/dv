@@ -14,7 +14,10 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+print( 'base dir', BASE_DIR)
+#
+GDAL_LIBRARY_PATH='C:\\Users\\NMcPhail\\Downloads\\release-1911-x64-gdal-2-4-0-mapserver-7-2-2\\bin'
+#GDAL_LIBRARY_PATH = 'c:\\dfddfdfd'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -31,6 +34,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'crispy_forms',
     'dventities.apps.DventitiesConfig',
     'codegen.apps.CodegenConfig',
     'django.contrib.admin',
@@ -39,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'admirarchy',
 ]
 
 MIDDLEWARE = [
@@ -53,10 +58,14 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'dv.urls'
 
+root_template_path = "{}/dv/templates".format(BASE_DIR).replace('\\','/')
+print('root template', root_template_path)
+
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [root_template_path, ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,6 +91,16 @@ DATABASES = {
     }
 }
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django_hana',
+#        'NAME': 'gdelt_hana',  # This is db schema name. It will be added if it does not exist.
+#        'USER': 'gdelt_hana',
+#        'PASSWORD': 'Welcome18Welcome18', # Replace with your password.
+#        'HOST': 'anvhanasb01',  # Replace with your HXE server IP address
+#        'PORT': '39015',
+#    }
+#}
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -113,7 +132,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)

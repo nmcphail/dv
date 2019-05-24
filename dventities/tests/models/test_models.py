@@ -101,32 +101,3 @@ class LinkTests(TestCase):
         ll.hub_loaders.add(hl, )
         ll.clean()
         ll.save()
-        print(ll.hub_loaders.all())
-        
-
-        print(dir(ll))
-        #print(dir(f1))
-        print('Field used in hubloaders')
-        for f in f1.hubloaderfield_set.all():
-            print(f)
-            
-        print('Field used in hub satelite loaders')
-        for f in f1.hubsateliteloaderfield_set.all():
-            print(f)
-
-        print('Field used in link loaders')
-        for f in f1.linkloaderfield_set.all():
-            print(f)
-
-        print('Field used in link satelite loaders')
-        for f in f1.linksateliteloaderfield_set.all():
-            print(f)
-    
-
-        
-        #print(st.stagetablefield_set.all())
-        #print(st)
-        pass
-
-    print('hello')
-

@@ -82,3 +82,46 @@ class HubSateliteTests(TestCase):
         #print(h.name)
         self.assertEqual(1,1)
 # Create your tests here.
+
+
+class PitTableTests(TestCase):
+
+    def test_pit_table_defintion(self):
+        """
+        """
+        h = Hub(name='hub1')
+        h.clean()
+        h.save()
+        f1 = HubKeyField(field_name='hub1 field1',
+                         field_precision=0,
+                         field_scale=0,
+                         field_type='string',
+                         field_length=30)
+        f1.clean()
+        f1.hub = h
+        #print(dir(h))
+        f1.save()
+        
+        s = HubSatelite(name='hub1 satelite1')
+        s.hub = h
+        s.clean()
+        s.save()
+
+
+        sf1 = HubSateliteField(field_name = 'hub1 satelite1 field1',
+                         field_precision=0,
+                         field_scale=0,
+                         field_type='string',
+                         field_length=30)
+        sf1.sat = s
+        sf1.clean()
+        sf1.save()
+
+        pit = hub_table.HubPITGenerator (h)
+        pit_table_def = pit.get_pit_table_definition()
+        print(pit_table_def)
+        
+        #print(st.get_artifact_text())
+        h.save()
+        print(h.name)
+        self.assertEqual(1,1)

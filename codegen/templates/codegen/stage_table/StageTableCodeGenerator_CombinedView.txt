@@ -13,7 +13,7 @@ create view {{gen.combined_view_name}} as
     select
        {% include "../utils/field_names.txt" with field_list=gen.stage_table.stagetablefield_set.all alias="st"  %}
        ,
-       {% include "../utils/field_names.txt" with field_list=gen.field_list alias="aug"  %}
+       {% include "../utils/field_names.txt" with field_list=gen.field_list_for_augmented_table alias="aug"  %}
 
     from
          {{gen.stage_table.schema}}.{{gen.stage_table.table_name}} st

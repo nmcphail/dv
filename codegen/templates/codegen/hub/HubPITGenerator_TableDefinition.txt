@@ -1,0 +1,29 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubPITGenerator_TableDefinition.txt
+
+*/
+
+create table {{gen.pit_table_schema}}.{{gen.pit_table_name}} (
+
+{% include "../utils/field_definition.txt" with field=gen.pit_table_primary_key_field  %},
+
+{% include "../utils/field_definition.txt" with field=gen.snapshot_field  %},
+
+{% include "../utils/field_definition.txt" with field=gen.hub.get_hash_key_field  %}
+
+
+,{% include "../utils/field_definition.txt" with field_list=gen.satelite_hash_key_fields  %}
+
+,{% include "../utils/field_definition.txt" with field_list=gen.satelite_load_time_fields  %}
+
+);
+
+
+ALTER TABLE  {{gen.pit_table_schema}}.{{gen.pit_table_name}}
+   ADD  CONSTRAINT  {{gen.pit_table_name}}_pk
+   PRIMARY KEY ( {{ gen.pit_table_primary_key_field.column_name }}  );
+
+

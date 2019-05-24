@@ -1,0 +1,19 @@
+
+
+{% extends "dv/base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+<table>
+
+
+  {% for object in object_list %}
+      <tr><td>  {{object.name}} </td><td><a href="/dventities/hub/{{object.id}}/change" > Edit </a><td></tr>
+
+      
+      
+  {% endfor %}
+      
+
+</table>
+{% endblock %}

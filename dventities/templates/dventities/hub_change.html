@@ -1,0 +1,154 @@
+
+
+{% extends "dv/base.html" %}
+{% load crispy_forms_tags %}
+{% block content %}
+
+
+<form action=""  method="post">
+<h2>Hub Details</h2>
+<div class="container">
+<table>
+{% csrf_token %}
+
+{% for hidden_field in form.hidden_fields %}
+    {{ hidden_field.errors }}
+    {{ hidden_field }}
+  {% endfor %}
+  {{ form.id }}
+{% crispy form %} {{ form.id }}
+
+</div>
+
+
+
+
+  <table>
+   <tr> 
+     <td>
+       <h2 >Hub Satelite Details</h2>
+     </td>
+     <td>
+       <a class="btn btn-primary"
+	  data-toggle="collapse"
+	  href="#hub_satelite_formset"
+	  role="button"
+	  aria-expanded="false"
+	  aria-controls="collapseExample">
+    Hide / Show
+  </a>
+       
+     </td>
+   </tr>  
+  </table>
+
+
+
+<div  >
+{{ hub_satelite_formset.management_form|crispy }}
+
+<table class="collapse" id="hub_satelite_formset" >
+    <thead>
+        {% for form in hub_satelite_formset.forms %}
+            {% if forloop.first %}
+                {% for field in form %}
+                    <th>{{ field.label_tag }}</th>
+                {% endfor %}
+            {% endif %}
+    </thead>
+    <tbody>
+            <tr>
+                {% for field in form %}
+                    <td>{{ field }}</td>
+                {% endfor %}
+		    <td>Edit</td>    
+            </tr>
+            {% if forloop.last %}
+	       <tr>
+                {% for field in form %}
+                    <td></td>
+                    {% endfor %}
+		<td>
+		     Add New 
+		  </td>
+		    
+	       </tr>	    
+            {% endif %}
+
+        {% endfor %}
+    
+    </tbody>
+</table>
+
+
+  <table>
+   <tr> 
+     <td>
+       <h2 >Hub Key Fields</h2>
+     </td>
+     <td>
+       <a class="btn btn-primary"
+	  data-toggle="collapse"
+	  href="#hub_key_field_formset"
+	  role="button"
+	  aria-expanded="false"
+	  aria-controls="collapseExample">
+    Hide / Show
+  </a>
+       
+     </td>
+   </tr>  
+  </table>
+
+
+
+
+<div  >
+{{ hub_key_field_formset.management_form|crispy }}
+
+<table class="collapse" id="hub_key_field_formset" >
+    <thead>
+        {% for form in hub_key_field_formset.forms %}
+            {% if forloop.first %}
+                {% for field in form %}
+                    <th>{{ field.label_tag }}</th>
+                {% endfor %}
+            {% endif %}
+    </thead>
+    <tbody>
+            <tr>
+                {% for field in form %}
+                    <td>{{ field }}</td>
+                {% endfor %}
+		    <td>Edit</td>    
+            </tr>
+            {% if forloop.last %}
+	       <tr>
+                {% for field in form %}
+                    <td></td>
+                    {% endfor %}
+		<td>
+		     Add New 
+		  </td>
+		    
+	       </tr>	    
+            {% endif %}
+
+        {% endfor %}
+    
+    </tbody>
+</table>
+
+
+
+
+<input type="submit">
+</form>
+</div>
+
+
+</table>
+
+
+
+{% endblock %}
