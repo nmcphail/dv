@@ -72,7 +72,7 @@ class HubKeyFieldForm(ModelForm):
         
     class Meta:
         model = HubKeyField
-        fields = ['hub', 'field_name', ]
+        fields = '__all__'
         #hidden_fields = ['hub']
 
     def __init__(self, hub, *args, **kwargs):
@@ -165,19 +165,36 @@ class HubChangeView(FormView):
         return reverse('hub_list')       
     
     def get(self, request, pk,  *args, **kwargs):
+
+
+
+        if pk == 99:
+            form = HubChangeForm(instance=None, prefix='hub_form')
+            hub_satelite_formset = HubSateliteFormset(
+                prefix='hub_satelite_formset',
+#                queryset=hub.hubsatelite_set.all(),
+                form_kwargs={'hub': None} )
+            hub_key_field_formset = HubKeyFieldFormset(
+                prefix='hub_key_field_formset',
+ #               queryset=hub.hubkeyfield_set.all(),
+                form_kwargs={'hub': None} )
+
+            return render(request, 'dventities/hub_change.html', {'form': form, 
+                                                                  'hub_satelite_formset' : hub_satelite_formset,
+                                                                  'hub_key_field_formset' : hub_key_field_formset })
+        else:    
+            hub = Hub.objects.get(pk=pk)
+            form = HubChangeForm(instance=hub, prefix='hub_form')
+            hub_satelite_formset = HubSateliteFormset(
+                prefix='hub_satelite_formset',
+                queryset=hub.hubsatelite_set.all(),
+                form_kwargs={'hub': hub} )
+            hub_key_field_formset = HubKeyFieldFormset(
+                prefix='hub_key_field_formset',
+                queryset=hub.hubkeyfield_set.all(),
+                form_kwargs={'hub': hub} )
         
-        hub = Hub.objects.get(pk=pk)
-        form = HubChangeForm(instance=hub, prefix='hub_form')
-        hub_satelite_formset = HubSateliteFormset(
-            prefix='hub_satelite_formset',
-            queryset=hub.hubsatelite_set.all(),
-            form_kwargs={'hub': hub} )
-        hub_key_field_formset = HubKeyFieldFormset(
-            prefix='hub_key_field_formset',
-            queryset=hub.hubkeyfield_set.all(),
-            form_kwargs={'hub': hub} )
-        
-        return render(request, 'dventities/hub_change.html', {'form': form, 'sat_form' : None ,
+            return render(request, 'dventities/hub_change.html', {'form': form, 
                                                               'hub_satelite_formset' : hub_satelite_formset,
                                                               'hub_key_field_formset' : hub_key_field_formset })
 
@@ -185,6 +202,7 @@ class HubChangeView(FormView):
     def post(self, request, pk,   *args, **kwargs):
         hub = Hub.objects.get(pk=pk)
         hub_form = HubChangeForm(request.POST, prefix='hub_form')
+        form_errors = False
         
         if hub_form.is_valid():
             hub_form.instance.id = pk
@@ -193,6 +211,7 @@ class HubChangeView(FormView):
             hub_form.save()
         else:
             print('hub form not valid')
+            form_errors = True
             print(hub_form.errors)
 
         hub_satelite_formset = HubSateliteFormset(
@@ -204,6 +223,7 @@ class HubChangeView(FormView):
             hub_satelite_formset.clean()
             hub_satelite_formset.save()
         else:
+            form_errors = True
             print(hub_satelite_formset.errors)
 
         hub_key_field_formset = HubKeyFieldFormset(
@@ -215,9 +235,19 @@ class HubChangeView(FormView):
             hub_key_field_formset.clean()
             hub_key_field_formset.save()
         else:
+            form_errors = True
             print(hub_key_field_formset.errors)
-    
-        return HttpResponseRedirect( self.get_success_url())
+
+        if form_errors:
+            return render(request, 'dventities/hub_change.html', {'form': hub_form, 
+                                                                  'hub_satelite_formset' : hub_satelite_formset,
+                                                                  'hub_key_field_formset' : hub_key_field_formset })
+            
+
+        if 'save' in request.POST:    
+            return HttpResponseRedirect( self.get_success_url())
+        else:
+            return HttpResponseRedirect( request.get_full_path())
 
 
 
