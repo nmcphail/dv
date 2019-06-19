@@ -1,3 +1,5 @@
 hash_input (
-{% for f in field_list %}  convert_{{f.field_type}} ( {% if not alias is None %}{{alias}}.{% endif %}{{f.column_name}}  {% if not forloop.last %},{% endif  %} {% endfor %}) )
+{% for f in field_list %}
+convert_{{f.field_type}} ( {% if not alias is None %}{{alias}}.{% endif %}{{f.column_name}})  {% if not forloop.last %},{% endif  %}
+{% endfor %} )
 

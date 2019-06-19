@@ -46,6 +46,11 @@ class LinkTests(TestCase):
         cls.hub_ref1.clean()
         cls.hub_ref1.save()
 
+        cls.link1 = Link(name='link1')
+        cls.link1.clean()
+        cls.link1.save()
+
+
     def test_hub_creation1(self):
         """
         """
@@ -101,3 +106,24 @@ class LinkTests(TestCase):
         ll.hub_loaders.add(hl, )
         ll.clean()
         ll.save()
+
+    def test_adding_link_loader1(self):
+        """
+        """
+
+        st = StageTable(name='stage table 1')
+        st.clean()
+        st.save()
+
+        f1 = st.stagetablefield_set.create(field_name='f1', field_type='string', field_length=20)
+        f2 = st.stagetablefield_set.create(field_name='f2', field_type='string', field_length=20)
+        hl = HubLoader()
+        hl.hub = LinkTests.hub1
+        hl.stage_table = st
+        hl.clean()
+        hl.save()
+
+        #for h in Hub.objects.all():
+        #    print(h.name)
+            
+        st.add_link_loader_for_hub_names('link1', (('hub1', True), ) )

@@ -257,6 +257,5 @@ class StageTableTests(TestCase):
 
         
         generated_text = atg.get_link_satelite_loader_proc_text(lsl).lower()
+        generated_text = atg.get_call_load_procedures_text()
         #print(generated_text)
-        
-        

@@ -34,6 +34,7 @@ class HubSateliteTableGenerator():
         self.field_list.append(self.sat.hub.get_hash_key_field())
         self.field_list.append(self.sat.get_load_time_field())
         self.field_list.append(self.sat.get_record_source_field())
+        self.field_list.append(self.sat.get_diff_key_field())
         
         for f in self.sat.hubsatelitefield_set.all():
             self.field_list.append(f)
@@ -59,7 +60,7 @@ class HubPITGenerator():
         self.hub_hash_key = self.hub.get_hash_key_field()
         self.satelite_hash_key_fields = []
         self.satelite_load_time_fields = []
-        self.pit_table_schema = 'bus'
+        self.pit_table_schema = 'gdelt_hana'
         self.pit_table_name = "{}_pit".format(convert_entity_name_to_table_name(hub.name))
 
         self.hub_satelites_to_include_in_pit = self.hub_satelites # Include all satelites - might change

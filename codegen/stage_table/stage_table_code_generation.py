@@ -21,6 +21,13 @@ class StageTableCodeGenerator():
         self.hub_loaders = self.stage_table.hubloader_set.all()
         self.hub_satelite_loaders = self.stage_table.hubsateliteloader_set.all()
 
+        self.schema = stage_table.schema
+        
+        self.hub_load_procedure_names = []
+        self.hub_satelite_load_procedure_names = []
+        self.link_load_procedure_names = []
+        self.link_satelite_load_procedure_names = []
+
 
         # These fields are useful in the tempate 
         self.load_date_field = FieldNonPersistent.create_load_time_field()
@@ -59,7 +66,7 @@ class StageTableCodeGenerator():
         
         self.link_loaders = self.stage_table.linkloader_set.all()
         self.link_loaders_that_require_diff_fields = []
-
+        
 
         
         for ll in self.link_loaders:
@@ -69,16 +76,15 @@ class StageTableCodeGenerator():
                 
         self.link_satelite_loaders = self.stage_table.linksateliteloader_set.all()
 
-        self.augmented_table_name = "{}.{}_aug".format(
-            self.stage_table.schema,
+        self.augmented_table_name = "{}_aug".format(
             self.stage_table.table_name)
         
         self.augmented_table_insert_proc_name = "{}_insert".format(self.augmented_table_name)
 
-        self.combined_view_name = "{}.{}_cv".format(
-            self.stage_table.schema,
+        self.combined_view_name = "{}_cv".format(
             self.stage_table.table_name) 
 
+        self.call_all_loads_proc_name = self.stage_table.table_name + '_load_all'
 
         self.stage_table_fields_physical = \
             self.stage_table.stagetablefield_set.filter(usage='physical' )
@@ -97,6 +103,7 @@ class StageTableCodeGenerator():
 #            self.field_list_for_augmented_table.append(f)
         
         self.field_list_for_augmented_table.append( self.load_date_field )
+        self.field_list_for_augmented_table.append(self.processed_field )
         
         for hl in self.hub_loaders:
             self.field_list_for_augmented_table.append(hl.hub.get_hash_key_field())
@@ -136,6 +143,8 @@ class StageTableCodeGenerator():
         self.hub_key_fields_from_stage_table = []
         self.hub_loader = hub_loader
         self.hub_key_fields = []
+        self.hub_loader_proc_name = self.stage_table.table_name + '_load_' + self.hub_loader.hub.table_name
+        self.hub_load_procedure_names.append(  self.hub_loader_proc_name )
 
         self.hub_loader.hub.hubkeyfield_set.all().order_by('pk')
 
@@ -173,10 +182,11 @@ class StageTableCodeGenerator():
                 self.hub_satelite_fields.append(sat_field)
                 self.hub_satelite_fields_from_stage_table.append(hub_satelite_loader_field.stage_table_field)
                 
-        self.hub_satelite_loader_proc_name = "{}.{}_{}_loader".format(self.stage_table.schema,
-                                                                      self.stage_table.table_name,
-                                                                      self.hub_satelite_loader.hub_satelite.table_name)
+        self.hub_satelite_loader_proc_name = "{}_load_{}".format(self.stage_table.table_name,
+                                                                 self.hub_satelite_loader.hub_satelite.table_name)
 
+        self.hub_satelite_load_procedure_names.append(self.hub_satelite_loader_proc_name)
+        
         ctx  = {'gen' : self }
         return render_template('codegen/stage_table/StageTableCodeGenerator_HubSateliteLoaderProc.txt', ctx, format_sql=True)
 
@@ -197,10 +207,9 @@ class StageTableCodeGenerator():
                 self.link_fields.append(link_field)
                 self.link_fields_from_stage_table.append(link_loader_field.stage_table_field)
                 
-        self.link_loader_proc_name = "{}.{}_{}_loader".format(self.stage_table.schema,
-                                                                      self.stage_table.table_name,
-                                                                      self.link_loader.link.table_name)
-
+        self.link_loader_proc_name = "{}_load_{}".format(self.stage_table.table_name,
+                                                         self.link_loader.link.table_name)
+        self.link_load_procedure_names.append(self.link_loader_proc_name)
         ctx  = {'gen' : self }
         return render_template('codegen/stage_table/StageTableCodeGenerator_LinkLoaderProc.txt', ctx, format_sql=True)
 
@@ -220,13 +229,15 @@ class StageTableCodeGenerator():
                 self.link_satelite_fields.append(link_satelite_field)
                 self.link_satelite_fields_from_stage_table.append(link_satelite_loader_field.stage_table_field)
                 
-        self.link_satelite_loader_proc_name = "{}.{}_{}_loader".format(self.stage_table.schema,
-                                                                      self.stage_table.table_name,
-                                                                      self.link_satelite_loader.link_satelite.table_name)
-
+        self.link_satelite_loader_proc_name = "{}_load_{}".format( self.stage_table.table_name,
+                                                                   self.link_satelite_loader.link_satelite.table_name)
+        self.link_satelite_load_procedure_names.append(self.link_satelite_loader_proc_name)
         ctx  = {'gen' : self }
         return render_template('codegen/stage_table/StageTableCodeGenerator_LinkSateliteLoaderProc.txt', ctx, format_sql=True)
 
+    def get_call_load_procedures_text(self):
+        ctx  = {'gen' : self }
+        return render_template('codegen/stage_table/StageTableCodeGenerator_CallLoadProcedures.txt', ctx, format_sql=False)
     
     
 # Create your models here.

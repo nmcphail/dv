@@ -78,7 +78,7 @@ def create_stage_table_from_hdbsql_output(hdbsql_output):
             stf.clean()
             stf.save()
             
-        
+    return st    
     #print(st)
         #print(len(line))
         

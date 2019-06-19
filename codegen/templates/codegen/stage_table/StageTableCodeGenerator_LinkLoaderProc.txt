@@ -5,7 +5,7 @@
     codegen/stage_table/StageTableCodeGenerator_LinkLoaderProc.txt
 */
 
-create or replace procedure {{gen.link_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
+create or replace procedure {{gen.schema}}.{{gen.link_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
 BEGIN
 
 INSERT INTO  {{gen.link_loader.link.schema}}.{{gen.link_loader.link.table_name}}  (

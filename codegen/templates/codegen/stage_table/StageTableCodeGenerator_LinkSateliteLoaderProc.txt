@@ -5,7 +5,7 @@
     codegen/stage_table/StageTableCodeGenerator_LinkSateliteLoaderProc.txt
 */
 
-create or replace procedure {{gen.link_satelite_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
+create or replace procedure {{gen.schema}}.{{gen.link_satelite_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
 BEGIN
 
 INSERT INTO  {{gen.link_satelite_loader.link_satelite.schema}}.{{gen.link_satelite_loader.link_satelite.table_name}}  (

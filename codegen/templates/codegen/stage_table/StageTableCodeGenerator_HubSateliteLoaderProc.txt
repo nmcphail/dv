@@ -5,13 +5,14 @@
     codegen/stage_table/StageTableCodeGenerator_HubSateliteLoaderProc.txt
 */
 
-create or replace procedure {{gen.hub_satelite_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
+create or replace procedure {{gen.schema}}.{{gen.hub_satelite_loader_proc_name}} ( p_load_time timestamp, p_processed timestamp ) as
 BEGIN
 
 INSERT INTO  {{gen.hub_satelite_loader.hub_satelite.schema}}.{{gen.hub_satelite_loader.hub_satelite.table_name}}  (
    {{gen.record_source_field.column_name}},
    {{gen.load_time_field.column_name}},
    {{gen.hub_satelite_loader.hub_satelite.hub.get_hash_key_field.column_name}},
+   {{gen.hub_satelite_loader.hub_satelite.get_diff_key_field.column_name}},
    {% include "../utils/field_names.txt" with field_list=gen.hub_satelite_fields  %}
 )
 
@@ -20,6 +21,7 @@ select distinct
     {{gen.record_source_field.column_name}},
     {{gen.load_time_field.column_name}},
     {{gen.hub_satelite_loader.hub_satelite.hub.get_hash_key_field.column_name}},
+    {{gen.hub_satelite_loader.hub_satelite.get_diff_key_field.column_name}},
     {% include "../utils/field_names.txt" with field_list=gen.hub_satelite_fields_from_stage_table  %}
 
 from
@@ -33,9 +35,9 @@ where
             from
                   {{gen.hub_satelite_loader.hub_satelite.schema}}.{{gen.hub_satelite_loader.hub_satelite.table_name}} sat
             where 1=1
-                 and sat.{{gen.hub_satelite_loader.hub_satelite.hub.get_hash_key_field.column_name}} =
+                 and   sat.{{gen.hub_satelite_loader.hub_satelite.hub.get_hash_key_field.column_name}} =
 		        cv.{{gen.hub_satelite_loader.hub_satelite.hub.get_hash_key_field.column_name}}
-		 and sat.{{gen.hub_satelite_loader.hub_satelite.hub.get_diff_key_field.column_name}} =
+		 and   sat.{{gen.hub_satelite_loader.hub_satelite.get_diff_key_field.column_name}} =
 		        cv.{{gen.hub_satelite_loader.hub_satelite.get_diff_key_field.column_name}}
 
        );

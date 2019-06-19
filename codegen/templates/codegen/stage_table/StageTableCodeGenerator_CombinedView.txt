@@ -7,17 +7,18 @@
 */
 
 
-drop view {{gen.combined_view_name}};
-create view {{gen.combined_view_name}} as
+drop view {{gen.schema}}.{{gen.combined_view_name}};
+create view {{gen.schema}}.{{gen.combined_view_name}} as
 
     select
        {% include "../utils/field_names.txt" with field_list=gen.stage_table.stagetablefield_set.all alias="st"  %}
        ,
        {% include "../utils/field_names.txt" with field_list=gen.field_list_for_augmented_table alias="aug"  %}
+       , '' as rsrc
 
     from
          {{gen.stage_table.schema}}.{{gen.stage_table.table_name}} st
-	 join {{gen.augmented_table_name}} on
+	 join {{gen.augmented_table_name}} aug on
 	 {% for f in gen.primary_key_fields %}
 	     st.{{f.column_name}} = aug.{{f.column_name}}
 	 {% endfor %}

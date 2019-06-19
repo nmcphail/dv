@@ -7,18 +7,6 @@
 */
 
 
-###
-
-
-
-####
-
-
-
-
-
-
-
 create or replace procedure {{gen.stage_table.schema}}.{{gen.augmented_table_insert_proc_name}} as
 BEGIN
 
@@ -48,7 +36,7 @@ BEGIN
         {% for lsl in gen.link_satelite_loaders  %}
            , {{lsl.link.get_hash_key_field.column_name}}
         {% endfor %}
-
+    )
 
     select
         {% include "../utils/field_names.txt" with field_list=gen.primary_key_fields alias=gen.stage_table.table_alias  %}

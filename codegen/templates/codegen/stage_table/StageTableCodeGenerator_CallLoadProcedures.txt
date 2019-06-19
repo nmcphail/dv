@@ -1,0 +1,100 @@
+
+
+/*
+    This code is generated using the template
+    codegen/stage_table/StageTableCodeGenerator_CallLoadProcedures.txt
+
+*/
+
+create or replace procedure {{gen.schema}}.{{gen.call_all_loads_proc_name}}  as
+BEGIN
+
+   declare ts timestamp := current_timestamp;
+   declare ld timestamp;
+   declare rows_to_process int; 
+
+   declare cursor  load_dates for      
+            select
+       	       distinct rldt
+	        from
+   	           {{gen.combined_view_name}}
+            where
+	            processed is null;
+
+
+   /*
+       First all records not present in the 'augmented' table
+       are inserted
+   */
+   call {{gen.augmented_table_insert_proc_name}}  ;
+
+   /*
+       Now all distinct load dates in the stage table are looped
+       through.  And for each load date, records are processed
+       in batches.  Batches are flagged with a timestamp, and
+       all procedures that act on the records of a batch take a
+       parameter for load date and timestamp of the batch
+       
+   */
+
+
+	for ld as    load_dates  do       
+	
+	    select count(*) into rows_to_process 
+	    from 
+	         {{gen.combined_view_name}} 
+	    where
+            processed is null
+            and rldt = ld.rldt;
+
+       while  rows_to_process > 0 DO
+
+                ts := current_timestamp;
+                update {{gen.augmented_table_name}} 
+                    set processed = ts 
+                where 
+                    processed is null 
+                    and rldt = ld.rldt;
+                --limit 10000;
+         
+                   select '11' from dummy;
+
+                   {% for n in gen.hub_load_procedure_names %}
+		       call {{n}}  ( ld.rldt, ts); 
+                   {% endfor %}
+
+                   {% for n in gen.hub_satelite_load_procedure_names %}
+		       call {{n}}  ( ld.rldt, ts); 
+                   {% endfor %}
+
+                   {% for n in gen.link_load_procedure_names %}
+		       call {{n}}  ( ld.rldt, ts); 
+                   {% endfor %}
+
+                   {% for n in gen.link_satelite_load_procedure_names %}
+		       call {{n}}  ( ld.rldt, ts); 
+                   {% endfor %}
+
+
+                commit;
+    	        select count(*) into rows_to_process 
+	            from 
+	                 {{gen.combined_view_name}} 
+	            where
+                        processed is null
+                        and rldt = ld.rldt;
+
+   
+        END while;   
+            	
+	END FOR;
+
+end;  
+
+
+/*
+begin
+     {{gen.schema}}.{{gen.call_all_loads_proc_name}} ;
+end;
+*/
+

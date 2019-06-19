@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
 
 # Create your models here.
 
@@ -58,6 +59,7 @@ class DVEntity(models.Model):
 
     def clean(self):
         self.schema = self.vault
+        self.schema = 'gdelt_hana'
         if self.table_name is None or self.table_name == '':
             self.table_name = self.name.replace(' ', '_').lower()
 
@@ -236,7 +238,6 @@ class Hub(RootEntity):
 
     
     def clean(self):
-        self.schema = self.vault
         if self.root_name is None or self.root_name == '':
             self.root_name = ('hub' + \
                                '_' + \
@@ -275,6 +276,25 @@ class Hub(RootEntity):
         ret = '{}.{}'.format(self.schema, self.table_name)
         return ret
 
+    def find_or_create_hub_satelite (self, hub_satelite_name):
+        hs = None
+        try:
+            hs = self.hubsatelite_set.get(name=hub_satelite_name)
+        except ObjectDoesNotExist:
+            hs = HubSatelite()
+            hs.name = hub_satelite_name
+            hs.hub = self
+            hs.clean()
+            hs.save()
+        return hs
+
+    def get_hub_by_name (hub_name):
+        h = None
+        try:
+            h = Hub.objects.get(name=hub_name)
+        except ObjectDoesNotExist:
+            pass
+        return h
     
             
 class HubKeyField(Field):
@@ -297,7 +317,7 @@ class HubSatelite(Satelite):
         return self.hub
     
     def clean(self):
-        self.schema = self.vault
+        self.schema = 'gdelt_hana'
         if self.table_name is None or self.table_name == '':
             self.table_name = (self.hub.name + \
                                '_' + \
@@ -345,7 +365,6 @@ class Link(RootEntity):
 
     
     def clean(self):
-        self.schema = self.vault
         if self.root_name is None or self.root_name == '':
             self.root_name = ('link' + \
                                '_' + \
@@ -431,7 +450,7 @@ class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
     def clean(self):
-        self.schema = self.vault
+        self.schema = 'delt_hana'
         if self.table_name is None or self.table_name == '':
             self.table_name = (self.link.name + \
                                '_' + \
@@ -458,7 +477,7 @@ class LinkSateliteField(Field):
 class StageTable(RootEntity):
     def clean(self):
         super().clean()
-        self.schema = self.vault
+        self.schema = 'gdelt_hana'
         if self.root_name is None or self.root_name == '':
             self.root_name = ('stage' + \
                                '_' + \
@@ -467,6 +486,83 @@ class StageTable(RootEntity):
     def __str__(self):
         return "{}.{}".format(self.schema, self.name)
 
+    def get_hub_loader_for_hub(self, hub):
+        for hl in self.hubloader_set.all():
+            if hl.hub == hub:
+                return hl
+        return None    
+
+    def get_hub_satelite_loader_for_hub_satelite(self, hub_satelite):
+        for hsl in self.hubsateliteloader_set.all():
+            if hsl.hub_satelite == hub_satelite:
+                return hsl
+        return None    
+
+    def get_link_loader_for_link(self, link):
+        for ll in self.linkloader_set.all():
+            if ll.link == link:
+                return ll
+        return None    
+
+    def add_hub_satelite_field_for_hub_and_satelite(self, hub_name, hub_alias, hub_satelite_name, field_name ):
+        hub = Hub.get_hub_by_name(hub_name)
+        if hub is None:
+            return
+        hub_loader = self.get_hub_loader_for_hub(hub)
+        hub_satelite = hub.find_or_create_hub_satelite(hub_satelite_name)
+        hub_satelite_loader = hub_loader.find_or_create_hub_satelite_loader(hub_satelite)
+        hub_satelite_loader.add_field(field_name, True)
+        
+    def add_stage_table_field_to_hub_loader(self, stage_table_field_name, hub_name, hub_key_field_name ):    
+        hub = Hub.objects.get(name=hub_name)
+        hub_loader = self.get_hub_loader_for_hub(hub)
+        if hub_loader is None:
+            hub_loader = HubLoader(stage_table=self, hub=hub)
+            hub_loader.clean()
+            hub_loader.save()
+            
+        f = self.stagetablefield_set.get(field_name=stage_table_field_name)
+        hlf = hub_loader.get_field_by_name(stage_table_field_name)
+        if hlf is None:
+            hlf = HubLoaderField(hub_loader = hub_loader, hub_field_name=hub_key_field_name)
+            hlf.stage_table_field = f
+            hlf.clean()
+            hlf.save()
+
+    def add_stage_table_field_to_link_loader(self, stage_table_field_name, link_name ):
+        link = Link.objects.get(name=link_name)
+        f = self.stagetablefield_set.get(field_name=stage_table_field_name)
+        link_loader = self.get_link_loader_for_link(link)
+        if link_loader is None:
+            link_loader = LinkLoader(stage_table=self, link=link)
+            link_loader.clean()
+            link_loader.save()
+        llf = link_loader.get_field_by_name(stage_table_field_name)
+        if llf is None:
+            llf = LinkLoaderField(link_loader=link_loader, create_field_like_this_in_link=True, create_diff_key=True)
+            llf.stage_table_field = f
+            llf.clean()
+            llf.save()
+
+    def add_link_loader_for_hub_names(self, link_name, hub_details ):
+        link = Link.objects.get(name=link_name)
+        link_loader = self.get_link_loader_for_link(link)
+        if link_loader is None:
+            link_loader = LinkLoader(stage_table=self, link=link)
+            link_loader.clean()
+            link_loader.save()
+        for hub_dets in hub_details:
+            hub = Hub.objects.get(name=hub_dets[0])
+            hub_loader = self.get_hub_loader_for_hub(hub)
+            if hub_loader is None:
+                print("Hub Loader is not found for hub : {} ".format(hub.name))
+                return 
+            link_loader.hub_loaders.add(hub_loader)
+
+        link_loader.clean()
+        link_loader.save()
+            
+            
 class StageTableField(Field):
     stage_table = models.ForeignKey(StageTable, on_delete=models.CASCADE)
     usage = models.CharField(
@@ -490,16 +586,16 @@ class StageTableField(Field):
         summary.append( ('stage_table_field', 0, 'Primary Key : {}'.format(self.stage_table_primary_key)))
 
         for hub_loader_field in self.hubloaderfield_set.all():
-            summary.append(('hub_loader_field', 1 , hub_loader_field.__str__()))
-            summary.append(('hub_loader',       2, hub_loader_field.hub_loader))
-            summary.append(('hub',              3, hub_loader_field.hub_loader.hub))
-            summary.append(('hub key field'   , 4, hub_loader_field.get_corresponding_hub_field))
+            summary.append(('hub_loader_field in ', 1 , hub_loader_field.hub_loader.hub.name))
+            summary.append(('hub_loader',       2, hub_loader_field.hub_loader.hub.name))
+            summary.append(('hub',              3, hub_loader_field.hub_loader.hub.name))
+            summary.append(('hub key field'   , 4, hub_loader_field.get_corresponding_hub_field().field_name))
             
         for hub_satelite_loader_field in self.hubsateliteloaderfield_set.all():
-            summary.append(('hub_satelite_field' , 1, hub_satelite_loader_field.__str__()))
-            summary.append(('hub_satelite_loader', 2, hub_satelite_loader_field.hub_satelite_loader))
-            summary.append(('hub_satelite'       , 3, hub_satelite_loader_field.hub_satelite_loader.hub_satelite))
-            summary.append(('hub_satelite_field' , 4, hub_satelite_loader_field.get_corresponding_hub_satelite_field))
+            summary.append(('hub_satelite_Loader_field in ' , 1, hub_satelite_loader_field.hub_satelite_loader.hub_satelite.name))
+            summary.append(('hub_satelite_loader', 2, hub_satelite_loader_field.hub_satelite_loader.hub_satelite.name))
+            summary.append(('hub_satelite'       , 3, hub_satelite_loader_field.hub_satelite_loader.hub_satelite.name))
+            summary.append(('hub_satelite_field' , 4, hub_satelite_loader_field.get_corresponding_hub_satelite_field().field_name))
 
         for link_loader_field in self.linkloaderfield_set.all():
             summary.append(('link_loader_field', 1 , link_loader_field.__str__()))
@@ -508,7 +604,7 @@ class StageTableField(Field):
             summary.append(('link field'   , 4, link_loader_field.get_corresponding_link_field))
             
         for link_satelite_loader_field in self.linksateliteloaderfield_set.all():
-            summary.append(('link_satelite_field' , 1, link_satelite_loader_field.__str__()))
+            summary.append(('link_satelite_loader_field' , 1, link_satelite_loader_field.__str__()))
             summary.append(('link_satelite_loader', 2, link_satelite_loader_field.link_satelite_loader))
             summary.append(('link_satelite'       , 3, link_satelite_loader_field.link_satelite_loader.link_satelite))
             summary.append(('link_satelite_field' , 4, link_satelite_loader_field.get_corresponding_link_satelite_field))
@@ -538,7 +634,23 @@ class HubLoader(models.Model):
         )
         return ret
 
- 
+    def get_field_by_name(self, field_name):
+        for f in self.hubloaderfield_set.all():
+            if f.stage_table_field.field_name == field_name:
+                return f
+        return None    
+        
+    def find_or_create_hub_satelite_loader(self, hub_satelite):
+        hsl = None
+        hsl = self.stage_table.get_hub_satelite_loader_for_hub_satelite(hub_satelite)
+        if hsl is None:
+            hsl = HubSateliteLoader( stage_table = self.stage_table,
+                                     hub_loader = self,
+                                     hub_satelite=hub_satelite)
+            hsl.clean()
+            hsl.save()
+        return hsl    
+        
     
 class HubLoaderField(models.Model):
     hub_loader = models.ForeignKey(HubLoader, on_delete=models.CASCADE)
@@ -596,7 +708,27 @@ class HubSateliteLoader(models.Model):
             ret.append(f.stage_table_field)
         return ret    
         
+    def get_field_by_name(self, field_name):
+        for f in self.hubsateliteloaderfield_set.all():
+            if f.stage_table_field.field_name == field_name:
+                return f
+        return None    
 
+    def add_field(self,
+                  stage_table_field_name,
+                  create_field_like_this_in_satelite):
+    
+        f = self.stage_table.stagetablefield_set.get(field_name=stage_table_field_name)
+        hslf = None
+        hslf = self.get_field_by_name(stage_table_field_name)
+        if hslf is None:
+            pass
+            hslf = HubSateliteLoaderField(hub_satelite_loader = self,
+                                          stage_table_field = f,
+                                          create_field_like_this_in_satelite = create_field_like_this_in_satelite)
+            hslf.clean()
+            hslf.save()
+        return hslf    
 
     
     def __str__(self):
@@ -700,6 +832,11 @@ class LinkLoader(models.Model):
             st_name = ''
         return '{} -> {}'.format(st_name, link_name)
     
+    def get_field_by_name(self, field_name):
+        for f in self.linkloaderfield_set.all():
+            if f.stage_table_field.field_name == field_name:
+                return f
+        return None    
             
 class LinkLoaderToHubLoader(models.Model):
     hub_loader = models.ForeignKey(HubLoader, on_delete=models.CASCADE)
