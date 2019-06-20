@@ -114,6 +114,7 @@ class StageTableCodeGenerator():
 
         for ll in self.link_loaders:
             self.field_list_for_augmented_table.append(ll.link.get_hash_key_field())
+            self.field_list_for_augmented_table.append(ll.link.get_driving_key_field())
 
         for ll in self.link_loaders_that_require_diff_fields:
             self.field_list_for_augmented_table.append(ll.link.get_diff_key_field())
@@ -121,9 +122,6 @@ class StageTableCodeGenerator():
         for lsl in self.link_satelite_loaders:
             if lsl.link_satelite.create_diff_key:
                 self.field_list_for_augmented_table.append(lsl.link_satelite.get_diff_key_field())
-                
-
-                
         
 
     def get_augmented_table_text(self):

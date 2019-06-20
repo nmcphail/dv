@@ -205,7 +205,7 @@ class StageTableTests(TestCase):
 
         generated_text = atg.get_combined_view_text().lower()
         self.assertIn( 'stagetablecodegenerator_combinedview', generated_text)
-        self.assertIn( 'create view {}'.format(atg.combined_view_name) , generated_text)
+        self.assertIn( 'create view {}.{}'.format(atg.schema, atg.combined_view_name) , generated_text)
         self.assertIn( 'join {}'.format(atg.augmented_table_name) , generated_text)
         for f in atg.stage_table.stagetablefield_set.filter(usage='physical'):
             self.assertIn('st.{}'.format(f.column_name), generated_text)
@@ -224,7 +224,7 @@ class StageTableTests(TestCase):
         generated_text = atg.get_hub_satelite_loader_proc_text(hsl).lower()
         
         self.assertIn( 'stagetablecodegenerator_hubsateliteloaderproc', generated_text)
-        self.assertIn( 'create or replace procedure {}'.format(atg.hub_satelite_loader_proc_name) , generated_text)
+        self.assertIn( 'create or replace procedure {}.{}'.format(atg.schema, atg.hub_satelite_loader_proc_name) , generated_text)
         for f in atg.hub_satelite_fields_from_stage_table:
             self.assertIn(hslf.stage_table_field.field_name, generated_text)
         

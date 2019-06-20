@@ -27,6 +27,7 @@ BEGIN
 
         {% for ll in gen.link_loaders %}
            , {{ll.link.get_hash_key_field.column_name}}
+	   , {{ll.link.get_driving_key_field.column_name}}
         {% endfor %}
 
         {% for ll in gen.link_loaders_that_require_diff_fields %}
@@ -54,6 +55,9 @@ BEGIN
 
         {% for ll in gen.link_loaders %}
             , {% include "../utils/hash_key_from_fields.txt" with field_list=ll.get_fields_from_stage_table_to_hash alias=gen.stage_table.table_alias  %} as {{ll.link.get_hash_key_field.column_name}}
+
+            , {% include "../utils/hash_key_from_fields.txt" with field_list=ll.get_fields_from_stage_table_to_hash_as_driving_key  alias=gen.stage_table.table_alias  %} as {{ll.link.get_driving_key_field.column_name}}
+
         {% endfor %}
 
         {% for ll in gen.link_loaders_that_require_diff_fields %}

@@ -13,6 +13,7 @@ class LinkTableGenerator():
         self.field_list.append(self.link.get_hash_key_field())
         self.field_list.append(self.link.get_load_time_field())
         self.field_list.append(self.link.get_record_source_field())
+        self.field_list.append(self.link.get_driving_key_field())
 
         if self.link.create_diff_key:
             self.field_list.append(self.link.get_diff_key_field())

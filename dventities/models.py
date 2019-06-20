@@ -397,6 +397,18 @@ class Link(RootEntity):
         )
         return f
 
+    def get_driving_key_field(self):
+        f = FieldNonPersistent(
+            field_name = 'Driving Key',     
+            field_type = 'string',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = 32,
+            column_name = self.table_name + '_drk'
+        )
+        return f
+
     def __str__(self):
         ret = '{}.{}'.format( self.schema, self.table_name)
         return ret
@@ -450,7 +462,7 @@ class LinkSatelite(Satelite):
     link = models.ForeignKey(Link, on_delete=models.CASCADE)
 
     def clean(self):
-        self.schema = 'delt_hana'
+        self.schema = 'gdelt_hana'
         if self.table_name is None or self.table_name == '':
             self.table_name = (self.link.name + \
                                '_' + \
@@ -816,10 +828,23 @@ class LinkLoader(models.Model):
 
     def get_fields_from_stage_table_to_hash_as_diff_key(self):
         ret = []
+        for ll2hl in self.linkloadertohubloader_set.all():
+            if ll2hl.forms_part_of_link_diff_key:
+                hl = ll2hl.hub_loader
+                for f in hl.hubloaderfield_set.all():
+                    ret.append(f.stage_table_field)
         for f in self.linkloaderfield_set.all():
             ret.append(f.stage_table_field)
         return ret    
 
+    def get_fields_from_stage_table_to_hash_as_driving_key(self):
+        ret = []
+        for ll2hl in self.linkloadertohubloader_set.all():
+            if ll2hl.forms_part_of_link_driving_key:
+                hl = ll2hl.hub_loader
+                for f in hl.hubloaderfield_set.all():
+                    ret.append(f.stage_table_field)
+        return ret    
     
     def __str__(self):
         if hasattr(self, 'link') and self.link is not None:

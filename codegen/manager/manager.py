@@ -4,6 +4,7 @@ from dventities.models import Hub, HubKeyField, HubSatelite, HubSateliteField
 
 from codegen.hub import hub_table
 from codegen.stage_table.stage_table_code_generation import *
+from codegen.link.link_code_generation import *
 
 
 
@@ -79,6 +80,25 @@ class HubManager(Manager):
         self.generate_default_pit_table()
         self.write_deployment_batch_file(self.root_dir)
 
+class LinkManager(Manager):
+    def __init__(self,link, artifact_location):
+        self.link = link
+        self.artifact_location = artifact_location
+        self.root_dir = self.artifact_location + os.sep + self.link.root_name
+
+    def generate_table(self):
+        file_prefix = 'aaa t '
+        file_path = self.root_dir + os.sep + file_prefix + ' ' + self.link.table_name + '.sql'
+        file_contents = LinkTableGenerator(self.link).get_artifact_text()
+        self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+  
+        
+    def generate_code(self):
+        self.generate_table()
+#        for s in self.hub.hubsatelite_set.all():
+#            sm = HubSateliteManager(s, self.artifact_location)
+#            sm.generate_code()
+        self.write_deployment_batch_file(self.root_dir)
             
         
 class HubSateliteManager(Manager):
@@ -92,9 +112,16 @@ class HubSateliteManager(Manager):
         file_path = self.root_dir + os.sep + file_prefix + ' ' + self.hub_satelite.table_name + '.sql'
         file_contents = hub_table.HubSateliteTableGenerator(self.hub_satelite).get_artifact_text()
         self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+
+    def generate_redt_view(self):
+        file_prefix = 'aas v'
+        file_path = self.root_dir + os.sep + file_prefix + ' ' + self.hub_satelite.table_name + '_redt.sql'
+        file_contents = hub_table.HubSateliteREDTGenerator(self.hub_satelite).get_redt_text()
+        self.write_to_file_if_file_does_not_exist(file_path, file_contents)
         
     def generate_code(self):
-        self.generate_table()    
+        self.generate_table()
+        self.generate_redt_view()
 
 
 class ModelManager():

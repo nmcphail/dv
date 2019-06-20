@@ -1,0 +1,19 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubSateliteREDTGenerator.txt
+
+*/
+
+    
+drop view {{gen.sat.schema}}.{{ gen.sat.table_name }}_redt;
+create view {{gen.sat.schema}}.{{ gen.sat.table_name }}_redt as 
+select
+    {{gen.sat.hub.get_hash_key_field.column_name}},
+    sat.rldt,
+   ifnull ( lead (rldt) over (partition by  {{gen.sat.hub.get_hash_key_field.column_name}} order by rldt), to_date('2100-01-01', 'YYYY-MM-DD')) as redt,
+   case when lead (rldt) over (partition by  {{gen.sat.hub.get_hash_key_field.column_name}} order by rldt) is null then 'Y' else 'N' end as curr
+from 
+    {{gen.sat.schema}}.{{ gen.sat.table_name }} sat;
+

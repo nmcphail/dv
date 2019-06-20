@@ -456,6 +456,7 @@ hm.generate_code()
 hm = manager.HubManager(company, mm.artifact_location)
 hm.generate_code()
 
+manager.LinkManager(Link.objects.get(name='Cost Center Company'), mm.artifact_location).generate_code()
 
 #for f in stage_table.stagetablefield_set.all():
 #    print(f.field_name)

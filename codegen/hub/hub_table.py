@@ -51,6 +51,18 @@ class HubSateliteTableGenerator():
         #return loader.render_to_string('codegen/hub/HubSateliteTableGenerator.txt', context=ctx)
         return render_template('codegen/hub/HubSateliteTableGenerator.txt', ctx)
 
+class HubSateliteREDTGenerator():
+    def __init__(self, satelite):
+        self.sat = satelite
+        
+
+    def get_redt_text(self):
+        ctx  = {'gen' : self }
+        #return loader.render_to_string('codegen/hub/HubSateliteTableGenerator.txt', context=ctx)
+        return render_template('codegen/hub/HubSateliteREDTGenerator.txt', ctx)
+
+
+    
 class HubPITGenerator():
     def __init__(self, hub):
         self.hub = hub
