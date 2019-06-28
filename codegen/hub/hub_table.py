@@ -27,6 +27,56 @@ class HubTableGenerator():
         ctx  = {'hub_table_generator' : self }
         return loader.render_to_string('codegen/hub/HubTable.txt', context=ctx)
 
+class HubLatestViewGenerator():
+
+    def __init__(self, hub):
+        self.hub = hub
+        self.hello = 'Hello'
+        self.satelites = self.hub.hubsatelite_set.all()
+        
+        self.field_list = []
+        self.field_list.append(self.hub.get_hash_key_field())
+        self.field_list.append(self.hub.get_load_time_field())
+        self.field_list.append(self.hub.get_record_source_field())
+        self.schema = 'gdelt_hana'
+        self.view_name = '{}_latest'.format( self.hub.table_name)
+        
+        for f in hub.hubkeyfield_set.all():
+            self.field_list.append(f)
+
+
+        self.sat_field_column_names = []
+        #for sat in self.satelites:
+            
+        
+
+    def get_artifact_text(self):
+        ctx  = {'gen' : self }
+        return loader.render_to_string('codegen/hub/HubLatestViewGenerator.txt', context=ctx)
+
+class HubPITProcGenerator():
+
+    def __init__(self, hub):
+        self.hub = hub
+        self.hello = 'Hello'
+        self.satelites = self.hub.hubsatelite_set.all()
+        
+
+        self.schema = 'gdelt_hana'
+        self.pit_proc_name = '{}_pit_populate'.format( self.hub.table_name)
+        self.pit_table_name = "{}_pit".format(convert_entity_name_to_table_name(self.hub.name))
+        self.pit_view_name = self.pit_table_name + '_view'
+        
+
+    def get_artifact_text(self):
+        ctx  = {'gen' : self }
+        return loader.render_to_string('codegen/hub/HubPITProcedure.txt', context=ctx)
+
+    def generate_pit_view_definition(self):
+        ctx  = {'gen' : self }
+        return loader.render_to_string('codegen/hub/HubPITViewGenerator.txt', context=ctx)
+
+    
 class HubSateliteTableGenerator():
     def __init__(self, satelite):
         self.sat = satelite
@@ -54,7 +104,6 @@ class HubSateliteTableGenerator():
 class HubSateliteREDTGenerator():
     def __init__(self, satelite):
         self.sat = satelite
-        
 
     def get_redt_text(self):
         ctx  = {'gen' : self }

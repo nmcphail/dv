@@ -1,0 +1,119 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubPITProcedure.txt
+
+*/
+
+
+create or replace procedure  {{gen.schema}}.{{gen.pit_proc_name}}  as
+begin
+
+declare v_load_start timestamp := now();
+declare v_load_end timestamp;
+declare v_table_name varchar(200) := '{{gen.pit_table_name}}';
+declare v_schema varchar(300) := '{{gen.schema}}';
+declare v_num_rows_in_pit_table bigint;
+declare v_num_rows_inserted bigint;
+declare v_num_rows_deleted bigint;
+declare v_load_time_ms bigint;
+declare v_missing_snapshots integer;
+declare v_procedure_name varchar(200) := '{{gen.pit_proc_name}}' ;
+
+select count(*) into v_num_rows_in_pit_table from {{gen.schema}}.{{gen.pit_table_name}} ;
+select count(*) into v_missing_snapshots from snapshots where snapshot_time not in (select snapshot_time from  {{gen.schema}}.{{gen.pit_table_name}} ) ;
+
+
+insert into
+   {{gen.schema}}.{{gen.pit_table_name}} (
+	{{gen.hub.get_pit_table_primary_key_field.column_name}},
+	snapshot_time,
+	{{gen.hub.get_hash_key_field.column_name}},
+    {% for sat in gen.satelites %}
+        {{sat.get_pit_table_hash_key_field.column_name}} ,
+        {{sat.get_pit_table_load_time_field.column_name}} 	
+     {% if not forloop.last %},{% endif  %}
+    {% endfor %}
+	
+
+
+   )
+select
+
+        hash_input (
+            convert_date ( snapshots.snapshot_time),
+            {% for f in gen.hub.hubkeyfield_set.all  %}
+            convert_{{f.field_type}} ( hub.{{f.column_name}} )  {% if not forloop.last %},{% endif  %}
+            {% endfor %}
+       ),
+
+
+    snapshots.snapshot_time,
+    hub.{{gen.hub.get_hash_key_field.column_name}},
+    {% for sat in gen.satelites %}
+        ifnull( {{sat.table_name}}_redt.{{sat.hub.get_hash_key_field.column_name}}, '{{sat.get_ghost_hash_value}}' ),
+        ifnull( {{sat.table_name}}_redt.{{sat.get_load_time_field.column_name}}, to_date( '{{sat.get_ghost_time_as_string}}', 'YYYY-MM-DD'  ))
+
+     {% if not forloop.last %},{% endif  %}
+    {% endfor %}
+from 
+    {{gen.hub.schema}}.{{ gen.hub.table_name }} hub
+
+    join snapshots snapshots on 1=1
+    
+{% for sat in gen.satelites %}
+
+   left join 
+       {{sat.schema}}.{{sat.table_name}}_redt {{sat.table_name}}_redt on 
+           {{sat.table_name}}_redt.{{gen.hub.get_hash_key_field.column_name}} =
+	                       hub.{{gen.hub.get_hash_key_field.column_name}} and snapshots.snapshot_time between {{sat.table_name}}_redt.rldt and {{sat.table_name}}_redt.redt
+			       
+
+{% endfor %}
+
+   where snapshots.snapshot_time not in (select snapshot_time from {{gen.schema}}.{{gen.pit_table_name}}  )
+
+;
+
+    select ::rowcount into v_num_rows_inserted from dummy;
+    
+    delete from {{gen.schema}}.{{gen.pit_table_name}}  where snapshot_time not in (select snapshot_time from snapshots);
+
+    select ::rowcount into v_num_rows_deleted from dummy;
+    
+    v_load_end := now();
+
+    insert into 
+        log_pit_table_load (
+	
+	    load_start ,
+	    load_end ,
+	    table_schema ,
+	    table_name ,
+	    procedure_name ,
+	    rows_in_pit_table ,
+	    rows_inserted ,
+	    rows_deleted ,
+	    missing_snapshots ,
+	    load_time_ms )
+	
+	values ( 
+		v_load_start,
+		v_load_end,
+		v_Schema,
+		v_table_name,
+		v_procedure_name,
+		v_num_rows_in_pit_table,
+		v_num_rows_inserted,
+		v_num_rows_deleted,
+		v_missing_snapshots,
+		NANO100_BETWEEN (v_load_start, v_load_end ) * 10 * 1000
+		
+	) ;
+
+
+
+
+
+end;

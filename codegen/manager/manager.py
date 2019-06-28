@@ -71,6 +71,28 @@ class HubManager(Manager):
         file_path = self.root_dir + os.sep + file_prefix + ' ' + self.hub.table_name + '_pit.sql'
         file_contents = hub_table.HubPITGenerator(self.hub).get_pit_table_definition()
         self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+
+    def generate_latest_view(self):
+        file_prefix = 'ppp v'
+        gen = hub_table.HubLatestViewGenerator(self.hub)
+        file_path = self.root_dir + os.sep + file_prefix + ' ' + gen.view_name + '.sql'
+        file_contents = gen.get_artifact_text()
+        self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+        
+    def generate_pit_proc(self):
+        file_prefix = 'ppppp'
+        gen = hub_table.HubPITProcGenerator(self.hub)
+        file_path = self.root_dir + os.sep + file_prefix + ' ' + gen.pit_proc_name + '.sql'
+        file_contents = gen.get_artifact_text()
+        self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+
+    def generate_pit_view(self):
+        file_prefix = 'ppppv'
+        gen = hub_table.HubPITProcGenerator(self.hub)
+        file_path = self.root_dir + os.sep + file_prefix + ' ' + gen.pit_view_name + '.sql'
+        file_contents = gen.generate_pit_view_definition()
+        self.write_to_file_if_file_does_not_exist(file_path, file_contents)
+        
         
     def generate_code(self):
         self.generate_table()
@@ -78,6 +100,9 @@ class HubManager(Manager):
             sm = HubSateliteManager(s, self.artifact_location)
             sm.generate_code()
         self.generate_default_pit_table()
+        self.generate_latest_view()
+        self.generate_pit_proc()
+        self.generate_pit_view()
         self.write_deployment_batch_file(self.root_dir)
 
 class LinkManager(Manager):

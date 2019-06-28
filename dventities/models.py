@@ -39,6 +39,9 @@ class DVEntity(models.Model):
     def get_load_time_field(self):
         return FieldNonPersistent.create_load_time_field()
 
+    def get_load_end_time_field(self):
+        return FieldNonPersistent.create_load_end_time_field()
+
     def get_record_source_field(self):
         return FieldNonPersistent.create_record_source_field()
 
@@ -53,6 +56,13 @@ class DVEntity(models.Model):
             column_name = self.table_name + '_dk'
         )
         return f
+
+    def get_ghost_hash_value(self):
+        return '00000000000000000000000000000000'
+
+    def get_ghost_time_as_string(self):
+        return '0001-01-01'
+    
     
     def __str__(self):
         return self.name
@@ -166,6 +176,18 @@ class FieldNonPersistent():
         return f
 
     def create_load_time_field():
+        f = FieldNonPersistent(
+            field_name = 'Load Time',     
+            field_type = 'datetime',       
+            field_precision = 0, 
+            field_scale = 0,  
+            field_description = 0,
+            field_length = None,
+            column_name = 'rldt'
+        )
+        return f
+    
+    def create_load_end_time_field():
         f = FieldNonPersistent(
             field_name = 'Load Time',     
             field_type = 'datetime',       

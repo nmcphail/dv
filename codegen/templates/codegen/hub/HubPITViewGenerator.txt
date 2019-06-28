@@ -1,0 +1,37 @@
+
+
+/*
+    This code is generated using the template
+    codegen/hub/HubPITViewGenerator.txt
+*/
+
+
+drop view {{gen.schema}}.{{gen.pit_view_name}} ;
+create view {{gen.schema}}.{{gen.pit_view_name}} as
+
+
+select
+    {{gen.pit_table_name}}.{{gen.hub.get_pit_table_primary_key_field.column_name}},
+    {{gen.pit_table_name}}.snapshot_time,
+    hub.*,
+    {% for sat in gen.satelites %}
+        {% for f in sat.hubsatelitefield_set.all %}
+            {{sat.table_name}}.{{f.column_name}} as {{sat.table_alias}}_{{f.column_name}}  {% if not forloop.last %},{% endif  %}
+        {% endfor %}
+     {% if not forloop.last %},{% endif  %}
+    {% endfor %}
+from 
+    {{gen.hub.schema}}.{{ gen.hub.table_name }} hub
+    join {{gen.schema}}.{{gen.pit_table_name}} {{gen.pit_table_name}} on  hub.{{gen.hub.get_hash_key_field.column_name}} =  {{gen.pit_table_name}}.{{gen.hub.get_hash_key_field.column_name}}
+    
+{% for sat in gen.satelites %}
+
+    join        
+       {{sat.schema}}.{{sat.table_name}} {{sat.table_name}} on 
+                 {{sat.table_name}}.{{sat.hub.get_hash_key_field.column_name}} = {{gen.pit_table_name}}.{{sat.get_pit_table_hash_key_field.column_name}}
+           and   {{sat.table_name}}.{{sat.get_load_time_field.column_name}} =  {{gen.pit_table_name}}.{{sat.get_pit_table_load_time_field.column_name}}
+
+{% endfor %}
+
+;
+
