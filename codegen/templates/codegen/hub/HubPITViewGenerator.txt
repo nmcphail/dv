@@ -1,14 +1,11 @@
 
-
 /*
     This code is generated using the template
     codegen/hub/HubPITViewGenerator.txt
 */
 
-
 drop view {{gen.schema}}.{{gen.pit_view_name}} ;
 create view {{gen.schema}}.{{gen.pit_view_name}} as
-
 
 select
     {{gen.pit_table_name}}.{{gen.hub.get_pit_table_primary_key_field.column_name}},
